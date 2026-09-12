@@ -321,12 +321,17 @@ function addFiles(fl){
   render();
 }
 function removeFile(i){files.splice(i,1);render();}
-function resetAll(){
+async function resetAll(){
   files=[];csvData='';
   document.getElementById('progress-wrap').style.display='none';
   document.getElementById('result-wrap').style.display='none';
   document.getElementById('extract-btn').disabled=true;
   render();
+  try {
+    await fetch(`${BASE}/clear-extractions`, { method: 'POST' });
+  } catch(e) {
+    console.error("Failed to clear backend extractions:", e);
+  }
 }
 
 document.getElementById('file-input').addEventListener('change',e=>{addFiles(e.target.files);e.target.value='';});

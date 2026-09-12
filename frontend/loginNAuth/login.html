@@ -34,13 +34,16 @@
         <p class="auth-subtitle">Sign in to your VYOM+ account</p>
         
         <form id="loginForm">
+            <!-- In-page warning banner container -->
+            <div id="alert-banner" style="display: none; padding: 12px; border-radius: var(--border-radius-md); background-color: rgba(239, 68, 68, 0.15); border: 1px solid var(--color-error); color: var(--color-text-primary); font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: 500;"></div>
+
             <div class="form-group">
-                <label for="username">Username</label>
+                <label for="email">Email</label>
                 <input 
-                    type="text" 
-                    id="username" 
-                    name="username" 
-                    placeholder="Enter your username" 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    placeholder="Enter your registered email" 
                     required
                 >
             </div>
@@ -66,10 +69,9 @@
         </div>
     </div>
 
-        <!-- Floating Theme Toggle -->
+    <!-- Floating Theme Toggle -->
     <button class="floating-theme-toggle theme-toggle-btn" id="auth-theme-toggle" title="Switch Theme">
         <i class="ti ti-sun"></i>
-        
     </button>
 
     <script src="../console/shared/theme.js"></script>

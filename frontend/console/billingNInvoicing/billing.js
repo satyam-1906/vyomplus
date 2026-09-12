@@ -1058,63 +1058,63 @@ generateBtn.addEventListener('click', async function (e) {
         gstAmount = meta.tax_reversed.igst_amount;
     }
     else if (GST_INVOICES.has(type)) {
-        party = document.getElementById('party').value.trim();
+        party = document.getElementById('party')?.value?.trim() || '';
         
         if (type === 'Sales' || type === 'CreditNote') {
-            meta.invoice_type = document.getElementById('invoice_type').value.trim();
-            meta.party_gstin = document.getElementById('party_gstin').value.trim();
-            meta.place_of_supply = document.getElementById('place_of_supply').value.trim();
-            meta.gstr1_section = document.getElementById('gstr1_section').value.trim();
-            meta.irn = document.getElementById('irn').value.trim();
-            meta.irn_ack_no = document.getElementById('irn_ack_no').value.trim();
-            meta.irn_ack_date = document.getElementById('irn_ack_date').value;
+            meta.invoice_type = document.getElementById('invoice_type')?.value?.trim() || '';
+            meta.party_gstin = document.getElementById('party_gstin')?.value?.trim() || '';
+            meta.place_of_supply = document.getElementById('place_of_supply')?.value?.trim() || '';
+            meta.gstr1_section = document.getElementById('gstr1_section')?.value?.trim() || '';
+            meta.irn = document.getElementById('irn')?.value?.trim() || '';
+            meta.irn_ack_no = document.getElementById('irn_ack_no')?.value?.trim() || '';
+            meta.irn_ack_date = document.getElementById('irn_ack_date')?.value || '';
         } 
         else if (type === 'BillOfSupply') {
-            meta.seller_gst_status = document.getElementById('seller_gst_status').value.trim();
-            meta.party_gstin = document.getElementById('party_gstin').value.trim();
-            meta.place_of_supply = document.getElementById('place_of_supply').value.trim();
-            meta.composition_note = document.getElementById('composition_note').value.trim();
-            meta.gstr4_applicable = document.getElementById('gstr4_applicable').checked;
+            meta.seller_gst_status = document.getElementById('seller_gst_status')?.value?.trim() || '';
+            meta.party_gstin = document.getElementById('party_gstin')?.value?.trim() || '';
+            meta.place_of_supply = document.getElementById('place_of_supply')?.value?.trim() || '';
+            meta.composition_note = document.getElementById('composition_note')?.value?.trim() || '';
+            meta.gstr4_applicable = document.getElementById('gstr4_applicable')?.checked || false;
         }
         else if (type === 'ExportInvoice') {
-            meta.export_type = document.getElementById('export_type').value.trim();
-            meta.lut_arn = document.getElementById('lut_arn').value.trim();
-            meta.consignee_country = document.getElementById('consignee_country').value.trim();
-            meta.currency = document.getElementById('currency').value.trim();
-            meta.exchange_rate = parseFloat(document.getElementById('exchange_rate').value) || 1;
-            meta.gstr1_section = document.getElementById('gstr1_section').value.trim();
+            meta.export_type = document.getElementById('export_type')?.value?.trim() || '';
+            meta.lut_arn = document.getElementById('lut_arn')?.value?.trim() || '';
+            meta.consignee_country = document.getElementById('consignee_country')?.value?.trim() || '';
+            meta.currency = document.getElementById('currency')?.value?.trim() || '';
+            meta.exchange_rate = parseFloat(document.getElementById('exchange_rate')?.value) || 1;
+            meta.gstr1_section = document.getElementById('gstr1_section')?.value?.trim() || '';
         }
         else if (type === 'Purchase' || type === 'DebitNote') {
-            meta.supplier_invoice_number = document.getElementById('supplier_invoice_number').value.trim();
-            meta.gstr2b_match_status = document.getElementById('gstr2b_match_status').value;
-            meta.itc_claim_status = document.getElementById('itc_claim_status').value;
+            meta.supplier_invoice_number = document.getElementById('supplier_invoice_number')?.value?.trim() || '';
+            meta.gstr2b_match_status = document.getElementById('gstr2b_match_status')?.value || '';
+            meta.itc_claim_status = document.getElementById('itc_claim_status')?.value || '';
         }
         else if (type === 'SelfInvoiceRCM') {
-            meta.supplier_name = document.getElementById('supplier_name').value.trim();
-            meta.supplier_registered = document.getElementById('supplier_registered').checked;
-            meta.reverse_charge_notification = document.getElementById('reverse_charge_notification').value.trim();
-            meta.tax_paid_by = document.getElementById('tax_paid_by').value.trim();
-            meta.itc_eligible = document.getElementById('itc_eligible').checked;
-            meta.gstr3b_table = document.getElementById('gstr3b_table').value.trim();
+            meta.supplier_name = document.getElementById('supplier_name')?.value?.trim() || '';
+            meta.supplier_registered = document.getElementById('supplier_registered')?.checked || false;
+            meta.reverse_charge_notification = document.getElementById('reverse_charge_notification')?.value?.trim() || '';
+            meta.tax_paid_by = document.getElementById('tax_paid_by')?.value?.trim() || '';
+            meta.itc_eligible = document.getElementById('itc_eligible')?.checked || false;
+            meta.gstr3b_table = document.getElementById('gstr3b_table')?.value?.trim() || '';
         }
 
         if (type === 'CreditNote' || type === 'DebitNote') {
-            meta.original_voucher_id = document.getElementById('original_voucher_id').value.trim();
-            meta.original_voucher_date = document.getElementById('original_voucher_date').value;
-            meta.reason = document.getElementById('reason').value.trim();
+            meta.original_voucher_id = document.getElementById('original_voucher_id')?.value?.trim() || '';
+            meta.original_voucher_date = document.getElementById('original_voucher_date')?.value || '';
+            meta.reason = document.getElementById('reason')?.value?.trim() || '';
         }
 
         // Collect Line Items
         const lines = [];
         document.querySelectorAll('#item-rows-container .item-row').forEach(row => {
-            const itemInp = row.querySelector('.item-input');
-            const gdInp   = row.querySelector('.godown-input');
+            const itemInp = row.querySelector('.item-input') || row.querySelector('.item-name');
+            const gdInp   = row.querySelector('.godown-input') || row.querySelector('.src-godown');
             const qtyInp  = row.querySelector('.qty-input');
             const rateInp = row.querySelector('.rate-input');
 
-            const item_name = itemInp.value.trim();
-            const qty = parseInt(qtyInp.value, 10) || 1;
-            const rate = parseFloat(rateInp.value) || 0;
+            const item_name = itemInp ? itemInp.value.trim() : '';
+            const qty = parseInt(qtyInp ? qtyInp.value : '1', 10) || 1;
+            const rate = parseFloat(rateInp ? rateInp.value : '0') || 0;
             const godown = gdInp ? gdInp.value.trim() : null;
 
             lines.push({
@@ -1146,48 +1146,48 @@ generateBtn.addEventListener('click', async function (e) {
         meta.grand_total = amount + gstAmount;
     }
     else if (INVENTORY_VOUCHERS.has(type) || PRESALES_VOUCHERS.has(type)) {
-        party = document.getElementById('party').value.trim();
+        party = document.getElementById('party')?.value?.trim() || '';
 
         if (type === 'PurchaseOrder' || type === 'SalesOrder' || type === 'JobWorkOutOrder' || type === 'Quotation') {
-            meta.expected_delivery_date = document.getElementById('expected_delivery_date').value;
-            meta.status = document.getElementById('status').value;
+            meta.expected_delivery_date = document.getElementById('expected_delivery_date')?.value || '';
+            meta.status = document.getElementById('status')?.value || '';
             if (type === 'SalesOrder') {
-                meta.advance_received = parseFloat(document.getElementById('advance_received').value) || 0;
+                meta.advance_received = parseFloat(document.getElementById('advance_received')?.value) || 0;
             }
             if (type === 'JobWorkOutOrder') {
-                meta.job_worker_name = document.getElementById('job_worker_name').value.trim();
+                meta.job_worker_name = document.getElementById('job_worker_name')?.value?.trim() || '';
             }
             if (type === 'Quotation') {
                 meta.valid_until = meta.expected_delivery_date;
             }
         }
         else if (type === 'DeliveryNote' || type === 'DeliveryChallan') {
-            meta.e_way_bill_no = document.getElementById('e_way_bill_no').value.trim();
-            meta.vehicle_number = document.getElementById('vehicle_number').value.trim();
+            meta.e_way_bill_no = document.getElementById('e_way_bill_no')?.value?.trim() || '';
+            meta.vehicle_number = document.getElementById('vehicle_number')?.value?.trim() || '';
             if (type === 'DeliveryNote') {
-                meta.linked_sales_order_id = document.getElementById('linked_sales_order_id').value.trim();
+                meta.linked_sales_order_id = document.getElementById('linked_sales_order_id')?.value?.trim() || '';
             } else {
-                meta.purpose = document.getElementById('purpose').value.trim();
-                meta.linked_job_work_out_order_id = document.getElementById('linked_job_work_out_order_id').value.trim();
-                meta.expected_return_date = document.getElementById('expected_return_date').value;
-                meta.is_taxable_supply = document.getElementById('is_taxable_supply').checked;
+                meta.purpose = document.getElementById('purpose')?.value?.trim() || '';
+                meta.linked_job_work_out_order_id = document.getElementById('linked_job_work_out_order_id')?.value?.trim() || '';
+                meta.expected_return_date = document.getElementById('expected_return_date')?.value || '';
+                meta.is_taxable_supply = document.getElementById('is_taxable_supply')?.checked || false;
             }
         }
         else if (type === 'ReceiptNote') {
-            meta.linked_purchase_order_id = document.getElementById('linked_purchase_order_id').value.trim();
+            meta.linked_purchase_order_id = document.getElementById('linked_purchase_order_id')?.value?.trim() || '';
         }
         else if (type === 'MaterialIn') {
-            meta.linked_job_work_out_order_id = document.getElementById('linked_job_work_out_order_id').value.trim();
+            meta.linked_job_work_out_order_id = document.getElementById('linked_job_work_out_order_id')?.value?.trim() || '';
         }
         else if (type === 'RejectionIn' || type === 'RejectionOut') {
-            meta.linked_reference_id = document.getElementById('linked_reference_id').value.trim();
+            meta.linked_reference_id = document.getElementById('linked_reference_id')?.value?.trim() || '';
         }
         else if (type === 'StockJournal') {
-            meta.journal_type = document.getElementById('journal_type').value.trim();
+            meta.journal_type = document.getElementById('journal_type')?.value?.trim() || '';
         }
         else if (type === 'PhysicalStock') {
-            meta.count_date = document.getElementById('count_date').value;
-            meta.godown_id = document.getElementById('godown_id').value.trim();
+            meta.count_date = document.getElementById('count_date')?.value || '';
+            meta.godown_id = document.getElementById('godown_id')?.value?.trim() || '';
         }
 
         // Collect items
@@ -1197,43 +1197,43 @@ generateBtn.addEventListener('click', async function (e) {
 
         document.querySelectorAll('#item-rows-container .item-row').forEach(row => {
             if (type === 'PhysicalStock') {
-                const name = row.querySelector('.item-name').value.trim();
-                const book = parseFloat(row.querySelector('.book-qty').value) || 0;
-                const phys = parseFloat(row.querySelector('.phys-qty').value) || 0;
-                const variance = parseFloat(row.querySelector('.variance').value) || 0;
+                const name = row.querySelector('.item-name')?.value?.trim() || '';
+                const book = parseFloat(row.querySelector('.book-qty')?.value) || 0;
+                const phys = parseFloat(row.querySelector('.phys-qty')?.value) || 0;
+                const variance = parseFloat(row.querySelector('.variance')?.value) || 0;
                 lines.push({ item: name, book_quantity: book, physical_quantity: phys, variance: variance });
             }
             else if (type === 'StockJournal') {
-                const name = row.querySelector('.item-name').value.trim();
-                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-                const src = row.querySelector('.src-godown').value.trim();
-                const dst = row.querySelector('.dest-godown').value.trim();
+                const name = row.querySelector('.item-name')?.value?.trim() || '';
+                const qty = parseFloat(row.querySelector('.qty-input')?.value) || 0;
+                const src = row.querySelector('.src-godown')?.value?.trim() || '';
+                const dst = row.querySelector('.dest-godown')?.value?.trim() || '';
                 stockJournalSrc.push({ item: name, quantity: qty, godown_id: src });
                 stockJournalDst.push({ item: name, quantity: qty, godown_id: dst });
             }
             else if (type === 'MaterialIn') {
-                const name = row.querySelector('.item-name').value.trim();
-                const sent = parseFloat(row.querySelector('.qty-sent').value) || 0;
-                const recv = parseFloat(row.querySelector('.qty-recv').value) || 0;
-                const loss = parseFloat(row.querySelector('.qty-loss').value) || 0;
+                const name = row.querySelector('.item-name')?.value?.trim() || '';
+                const sent = parseFloat(row.querySelector('.qty-sent')?.value) || 0;
+                const recv = parseFloat(row.querySelector('.qty-recv')?.value) || 0;
+                const loss = parseFloat(row.querySelector('.qty-loss')?.value) || 0;
                 lines.push({ item: name, quantity_sent: sent, quantity_received: recv, process_loss: loss });
             }
             else if (type === 'RejectionIn' || type === 'RejectionOut') {
-                const name = row.querySelector('.item-name').value.trim();
-                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-                const reason = row.querySelector('.reason-input').value.trim();
+                const name = row.querySelector('.item-name')?.value?.trim() || '';
+                const qty = parseFloat(row.querySelector('.qty-input')?.value) || 0;
+                const reason = row.querySelector('.reason-input')?.value?.trim() || '';
                 lines.push({ item: name, quantity: qty, reason: reason });
             }
             else {
                 // Standard Autocomplete Row
-                const itemInp = row.querySelector('.item-input');
-                const gdInp   = row.querySelector('.godown-input');
+                const itemInp = row.querySelector('.item-input') || row.querySelector('.item-name');
+                const gdInp   = row.querySelector('.godown-input') || row.querySelector('.src-godown');
                 const qtyInp  = row.querySelector('.qty-input');
                 const rateInp = row.querySelector('.rate-input');
 
-                const item_name = itemInp.value.trim();
-                const qty = parseInt(qtyInp.value, 10) || 1;
-                const rate = parseFloat(rateInp.value) || 0;
+                const item_name = itemInp ? itemInp.value.trim() : '';
+                const qty = parseInt(qtyInp ? qtyInp.value : '1', 10) || 1;
+                const rate = parseFloat(rateInp ? rateInp.value : '0') || 0;
                 const godown = gdInp ? gdInp.value.trim() : null;
 
                 lines.push({
@@ -1265,7 +1265,7 @@ generateBtn.addEventListener('click', async function (e) {
     generateBtn.disabled = true;
     generateBtn.innerHTML = '<i class="ti ti-loader-2" style="display:inline-block;animation:spin 1s linear infinite;"></i> Generating…';
 
-    // ── Step 1: Generate & Download PDF ───────────────────────────────────────
+    // ── Step 1: Generate & Download PDF Immediately ───────────────────────────
     try {
         const pdfPayload = {
             voucher_type: type,
@@ -1282,16 +1282,28 @@ generateBtn.addEventListener('click', async function (e) {
         });
         if (!res.ok) throw new Error('PDF Generation Failed.');
         
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const anchor  = document.createElement('a');
-        anchor.href     = blobUrl;
+        const pdfBlob = await res.blob();
+        const blobUrl = URL.createObjectURL(pdfBlob);
+
+        const anchor = document.createElement('a');
+        anchor.href = blobUrl;
         anchor.download = `${type}_${voucherNo}.pdf`;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener';
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
         anchor.click();
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+        setTimeout(() => {
+            if (document.body.contains(anchor)) {
+                document.body.removeChild(anchor);
+            }
+            URL.revokeObjectURL(blobUrl);
+        }, 15000);
+
         if (typeof showToast === 'function') showToast('Voucher PDF downloaded!', 'success');
     } catch (err) {
-        console.error(err);
+        console.error('PDF Error:', err);
         if (typeof showToast === 'function') showToast('Failed to generate PDF.', 'error');
         generateBtn.disabled = false;
         generateBtn.innerHTML = `<i class="ti ti-file-invoice"></i> Generate &amp; Download ${type}`;
@@ -1324,10 +1336,10 @@ generateBtn.addEventListener('click', async function (e) {
             if (typeof showToast === 'function') showToast('Voucher saved successfully!', 'success');
             await fetchAllVouchers();
         } else {
-            console.error('Failed to sync voucher entry.');
+            console.error('Failed to save voucher entry:', vRes.status);
         }
     } catch (err) {
-        console.error(err);
+        console.error('Voucher save error:', err);
     }
 
     // ── Step 3: Trigger inventory stock adjustment (only for Sales) ───────────
@@ -1336,16 +1348,25 @@ generateBtn.addEventListener('click', async function (e) {
             const syncItems = items.map(item => ({
                 item_name: item.item_name,
                 qty: item.qty,
-                godown: item.godown
-            }));
-            await fetch(`${API_BASE}/sync-invoice-stock`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: syncItems, revert: false })
-            });
-            await fetchInventory();
+                godown: (item.godown && !item.godown.startsWith('Select')) ? item.godown : null
+            })).filter(i => i.item_name);
+
+            if (syncItems.length > 0) {
+                const sRes = await fetch(`${API_BASE}/sync-invoice-stock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: syncItems, revert: false })
+                });
+                if (sRes.ok) {
+                    const dataJson = await sRes.json();
+                    console.log('Inventory synced successfully:', dataJson);
+                } else {
+                    console.error('Inventory sync error response:', await sRes.text());
+                }
+                await fetchInventory();
+            }
         } catch (err) {
-            console.error('Inventory sync error:', err);
+            console.error('Inventory sync exception:', err);
         }
     }
 

@@ -21,6 +21,78 @@ class Users(Base):
     username: Mapped[str] = mapped_column(String, unique=True)
     password: Mapped[str] = mapped_column(String)
     isactive: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Account & Security Additions
+    full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    mobile: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    mobile_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    onboarding_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+    two_fa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    two_fa_method: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    recovery_email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    recovery_phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    transaction_pin: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_login_ip: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    last_login_device: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    account_status: Mapped[str] = mapped_column(String, default="pending_onboarding")
+    consent_tos: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_privacy: Mapped[bool] = mapped_column(Boolean, default=False)
+    marketing_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    communication_preferences: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=lambda: {"email": True, "sms": False, "whatsapp": False})
+
+class BusinessProfile(Base):
+    __tablename__ = "business_profiles"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    
+    # Business Profile Fields
+    entity_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    legal_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    trade_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    display_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    date_incorporation: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    date_commenced: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    business_constitution: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    nature_business: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    business_description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    industry_sector: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    website: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    employee_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    annual_turnover: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    expected_turnover: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    financial_year: Mapped[str] = mapped_column(String, default="April-March")
+    accounting_start: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    currency: Mapped[str] = mapped_column(String, default="INR")
+    timezone: Mapped[str] = mapped_column(String, default="IST")
+    books_from_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    previous_software: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    
+    # PAN / Income-Tax Info Fields
+    pan: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    pan_holder_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    pan_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    pan_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    pan_doc_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    tan: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    tan_holder_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    tan_doc_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    tax_jurisdiction: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    assessing_officer: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    itr_filing_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    tax_audit_applicable: Mapped[bool] = mapped_column(Boolean, default=False)
+    tax_regime: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    tds_applicable: Mapped[bool] = mapped_column(Boolean, default=False)
+    tcs_applicable: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # GST Profile Fields
+    gstin: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    gst_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    gst_reg_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    gst_effective_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 class SessionTokens(Base):
     __tablename__ = "sessiontokens"
@@ -46,6 +118,20 @@ class Vouchers(Base):
     # NEW — voucher type tag + arbitrary type-specific data store
     meta_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     meta: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+
+class PendingVouchers(Base):
+    __tablename__ = "pending_vouchers"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    voucher_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    voucher_no: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
+    party: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    items: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    gst_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    discount: Mapped[float] = mapped_column(Float, default=0.0)
+    file_key: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending")
 
 class History(Base):
     __tablename__ = "histories"
@@ -114,4 +200,15 @@ class notificationLogs(Base):
     detail: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
+class WhatsAppAccount(Base):
+    __tablename__ = "whatsapp_accounts"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    wa_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    mobile: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending_link")
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
 Base.metadata.create_all(bind=engine)
+

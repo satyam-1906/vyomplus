@@ -31,19 +31,22 @@
 
     <div class="auth-container">
         <h1>Verify OTP</h1>
-        <p class="auth-subtitle">Enter the verification code sent to your email</p>
+        <p class="auth-subtitle">Enter the 6-digit verification code sent to your email</p>
         
         <form id="authForm">
-            <div class="form-group">
-                <label for="otp">Enter OTP</label>
-                <input 
-                    type="text" 
-                    id="otp" 
-                    name="otp" 
-                    placeholder="Enter 6-digit OTP" 
-                    required
-                >
+            <!-- In-page warning banner container -->
+            <div id="alert-banner" style="display: none; padding: 12px; border-radius: var(--border-radius-md); background-color: rgba(239, 68, 68, 0.15); border: 1px solid var(--color-error); color: var(--color-text-primary); font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: 500;"></div>
+
+            <div class="otp-inputs-container">
+                <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" required>
             </div>
+            
+            <input type="hidden" id="otp" name="otp">
 
             <button type="submit" id="verifyBtn" class="verify-button">
                 Verify OTP <i class="ti ti-shield-check"></i>
@@ -51,14 +54,14 @@
         </form>
 
         <div class="auth-footer-link">
-            Didn't receive it? <a href="#" onclick="alert('OTP resent successfully!')">Resend Code</a>
+            Didn't receive it? <span class="resend-countdown" id="resendTimer">Resend in 60s</span>
+            <a href="#" id="resendBtn" style="display: none;">Resend Code</a>
         </div>
     </div>
 
-        <!-- Floating Theme Toggle -->
+    <!-- Floating Theme Toggle -->
     <button class="floating-theme-toggle theme-toggle-btn" id="auth-theme-toggle" title="Switch Theme">
         <i class="ti ti-sun"></i>
-        
     </button>
 
     <script src="../console/shared/theme.js"></script>

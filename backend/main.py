@@ -1,15 +1,16 @@
 import stat
 from fastapi import FastAPI, HTTPException, Depends, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-import os, boto3, hashlib
+import os, boto3, hashlib, json
 from datetime import datetime, timedelta
 import copy
 from sympy import det
 from utils.otp_gen import otp_generator
 from utils.send_email import email_send
 from dotenv import load_dotenv
-from schemas import InputSchema, ExtractSchema, CreateSchema, EmailSchema, LoginSchema
+from schema import InputSchema, ExtractSchema, CreateSchema, EmailSchema, LoginSchema
 from database import Users, sessionLocal, SessionTokens
 from botocore.config import Config
 import jwt
@@ -24,9 +25,23 @@ from argon2.exceptions import VerifyMismatchError
 from typing import Any, List
 from utils.direct_ocr_extractor import ocr_extraction
 from botocore.exceptions import ClientError
-from schemas import VoucherSchema, BankStatementInputSchema, BRSInputSchema, GodownSchema, UnitSchema, StockSchema, NotificationLogSchema, InvoiceGenerationSchema, InvoiceSyncSchema, InvoiceSyncItemSchema
-from database import Vouchers, BankStatements, BRS, godown, units, stock, notificationLogs
+from schema import (
+    VoucherSchema, BankStatementInputSchema, BRSInputSchema, GodownSchema, UnitSchema, StockSchema,
+    NotificationLogSchema, InvoiceGenerationSchema, InvoiceSyncSchema, InvoiceSyncItemSchema,
+    PendingVoucherInputSchema, WhatsAppResetSessionSchema, WhatsAppIngestInvoiceSchema,
+    ReportGenerateSchema, WhatsAppLinkSchema
+)
+from database import (
+    Vouchers, BankStatements, BRS, godown, units, stock, notificationLogs, PendingVouchers, WhatsAppAccount
+)
 from utils.invoice_gen import generate_invoice, generate_voucher_pdf, clear
+from utils.whatsapp import (
+    process_whatsapp_event, clear_session, WHATSAPP_VERIFY_TOKEN, send_whatsapp_text, get_session
+)
+from utils.report_gen import (
+    generate_inventory_report, generate_reconciliation_report, generate_summary_report
+)
+
 
 
 ph = PasswordHasher()
@@ -36,22 +51,27 @@ redis_client=Redis(
     host=os.getenv("REDIS_HOST", 'comparison-hyperspeedy-canvas-69712.db.redis.io'),
     port=int(os.getenv("REDIS_PORT", 13818)),
     password=os.getenv("REDIS_PASSWORD"),
-    decode_responses=True
+    decode_responses=True,
+    socket_timeout=3.0,
+    socket_connect_timeout=3.0
 )
 binary_redis_client=Redis(
     host=os.getenv("REDIS_HOST", 'comparison-hyperspeedy-canvas-69712.db.redis.io'),
     port=int(os.getenv("REDIS_PORT", 6379)),
     password=os.getenv("REDIS_PASSWORD"),
+    socket_timeout=3.0,
+    socket_connect_timeout=3.0
 )
+
 bucket=os.getenv("S3_BUCKET_NAME")
 
-origins = ['http://localhost:5503', 'http://127.0.0.1:5501', 'http://127.0.0.1:5502', 'http://127.0.0.1', '0.0.0.0', 'http://localhost:3000']
-
-app.add_middleware(CORSMiddleware,
-                   allow_origins = origins,
-                   allow_credentials = True,
-                   allow_methods = ['*'],
-                   allow_headers = ['*'])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db=sessionLocal()
@@ -67,9 +87,23 @@ def chek():
 
 @app.post("/create")
 def crea(payload: CreateSchema, db: Session=Depends(get_db)):
-    email, username=payload.email, payload.username
-    password=ph.hash(payload.password)
-    db_note=Users(email=email, username=username, password=password, isactive=False)
+    email, full_name, mobile = payload.email, payload.full_name, payload.mobile
+    username = email.split("@")[0]
+    # Check if user already exists
+    existing = db.query(Users).filter((Users.email == email) | (Users.username == username)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    password = ph.hash(payload.password)
+    db_note = Users(
+        email=email,
+        username=username,
+        password=password,
+        full_name=full_name,
+        mobile=mobile,
+        isactive=False,
+        onboarding_complete=False,
+        account_status="pending_onboarding"
+    )
     db.add(db_note)
     try:
         db.commit()
@@ -77,26 +111,27 @@ def crea(payload: CreateSchema, db: Session=Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"error: {str(e)}")
     db.refresh(db_note)
-    otp= otp_generator()
-    hashed= hashlib.sha256(otp.encode()).hexdigest()
+    otp = otp_generator()
+    hashed = hashlib.sha256(otp.encode()).hexdigest()
     redis_client.setex(f"otp:{email}", 600, hashed)
     email_send(email, otp)
     return {"message": "OTP sent to your email"}
 
 @app.post("/verify")
 def veri(payload: EmailSchema, db:Session=Depends(get_db)):
-    ot, email=payload.otp, payload.email
-    key= f"otp:{email}"
-    stored=redis_client.get(key)
+    ot, email = payload.otp, payload.email
+    key = f"otp:{email}"
+    stored = redis_client.get(key)
     if not stored:
         raise HTTPException(status_code=404, detail="invalid otp or expired otp")
-    input_hash=hashlib.sha256(ot.encode()).hexdigest()
+    input_hash = hashlib.sha256(ot.encode()).hexdigest()
     if input_hash != stored:
         raise HTTPException(status_code=401, detail="otp does not match")
     user = db.query(Users).filter(Users.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="user not found")
     user.isactive = True
+    user.account_status = "active"
     try:
         db.commit()
     except Exception as e:
@@ -108,8 +143,8 @@ def veri(payload: EmailSchema, db:Session=Depends(get_db)):
 
 @app.post("/login")
 def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
-    username, password=payload.username, payload.password
-    user = db.query(Users).filter(Users.username == username).first()
+    email, password = payload.email, payload.password
+    user = db.query(Users).filter(Users.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="user not found")
     if user.isactive:
@@ -119,14 +154,23 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
             secret = os.getenv("SECRET")
             if not secret:
                 raise HTTPException(status_code=500, detail="JWT secret not configured")
+            
+            # Record login details
+            user.last_login = datetime.utcnow()
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
             pay = {
                 "iss": "auth-service",
-                "sub": username,
+                "sub": user.username,
+                "email": user.email,
                 "exp": datetime.utcnow() + timedelta(days=7)
             }
             token = jwt.encode(pay, secret, algorithm="HS256")
-            response.set_cookie(key="session_token", value=token, httponly=True, secure=True, samesite="lax", max_age=604800)
-            db_no = SessionTokens(username=username, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=datetime.utcnow()+timedelta(days=7), revoked=False)
+            response.set_cookie(key="session_token", value=token, max_age=604800)
+            db_no = SessionTokens(username=user.username, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=datetime.utcnow()+timedelta(days=7), revoked=False)
             db.add(db_no)
             try:
                 db.commit()
@@ -134,11 +178,88 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
                 db.rollback()
                 raise HTTPException(status_code=500, detail="database error")
             db.refresh(db_no)
-            return {"message": "login success"}
+            return {
+                "message": "login success",
+                "token": token,
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "onboarding_complete": user.onboarding_complete
+            }
         except VerifyMismatchError:
             raise HTTPException(status_code=401, detail="passwords do not match")
     else:
         raise HTTPException(status_code=401, detail="verify your email")
+
+def get_current_user_from_token(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("session_token")
+    if not token:
+        # Check authorization header too
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        secret = os.getenv("SECRET")
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        username = payload.get("sub")
+        user = db.query(Users).filter(Users.username == username).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.get("/onboarding/status")
+def get_onboarding_status(user: Users = Depends(get_current_user_from_token)):
+    return {
+        "onboarding_complete": user.onboarding_complete,
+        "full_name": user.full_name,
+        "email": user.email,
+        "mobile": user.mobile
+    }
+
+@app.post("/onboarding/complete")
+def complete_onboarding(payload: BusinessProfileSchema, db: Session = Depends(get_db), user: Users = Depends(get_current_user_from_token)):
+    # Save/update business profile
+    profile = db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
+    if not profile:
+        profile = BusinessProfile(user_id=user.id)
+        db.add(profile)
+    
+    # Map fields
+    for field, val in payload.dict(exclude_unset=True).items():
+        setattr(profile, field, val)
+        
+    user.onboarding_complete = True
+    user.account_status = "active"
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {"message": "Onboarding completed successfully"}
+
+@app.get("/profile/details")
+def get_profile_details(db: Session = Depends(get_db), user: Users = Depends(get_current_user_from_token)):
+    profile = db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
+    profile_data = {}
+    if profile:
+        profile_data = {c.name: getattr(profile, c.name) for c in profile.__table__.columns}
+    
+    return {
+        "user": {
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "mobile": user.mobile,
+            "two_fa_enabled": user.two_fa_enabled,
+            "onboarding_complete": user.onboarding_complete
+        },
+        "business": profile_data
+    }
+
 
 @app.post("/upload")
 def upl(payload: InputSchema):
@@ -158,13 +279,14 @@ def upl(payload: InputSchema):
 
 @app.post("/extract")
 def extr(payload: ExtractSchema):
-    combined_text = ""
+    from utils.direct_ocr_extractor import append_extracted_data, invoice_json_records, ocr_extraction
+
+    last_csv = ""
     for idx, file_key in enumerate(payload.file_keys):
         file_ext = "pdf"
         if idx < len(payload.file_type) and payload.file_type[idx]:
-            file_ext = payload.file_type[idx].lower().strip(".")
+            file_ext = (payload.file_type[idx] or '').lower().strip(".")
         else:
-            # Fallback extraction from file key name if payload.file_type is missing or incomplete
             file_ext = file_key.split(".")[-1].lower()
 
         response = s3.get_object(
@@ -172,65 +294,118 @@ def extr(payload: ExtractSchema):
             Key=file_key
         )
         file_bytes = response["Body"].read()
-        text = extract(file_bytes, file_ext)
-        if len(text.strip()) < 100:
-            text = extract_ocr(file_bytes, file_ext)
-        combined_text += "\n\n" + text
-    dt = redis_client.get(key1)
-    if dt["text"] == hash_text(combined_text):
-        return {"normal": dt["ai_result"]}
-    result = lang_app.invoke(State(content=combined_text))
-    text_hash = hash_text(combined_text) #isko caching mein use karenge
-    redis_client.setex(key, {"text": text_hash, "ai_result": result["normal"]}, 86400)
-    return {"csv_file": result["fin"], "normal": result["normal"]}
 
+        content_type = "application/pdf"
+        if file_ext in {"jpg", "jpeg"}:
+            content_type = "image/jpeg"
+        elif file_ext == "png":
+            content_type = "image/png"
+        elif file_ext == "pdf":
+            content_type = "application/pdf"
+
+        result = ocr_extraction(file_bytes, content_type, 'invoice')
+        normal = result.get('normal')
+        if normal is None:
+            continue
+
+        if isinstance(normal, list):
+            for page_data in normal:
+                if not isinstance(page_data, dict):
+                    continue
+                presigned_url, _key = append_extracted_data(page_data)
+                last_csv = presigned_url
+        elif isinstance(normal, dict):
+            presigned_url, _key = append_extracted_data(normal)
+            last_csv = presigned_url
+
+    return {"csv_file": last_csv, "normal": list(invoice_json_records)}
+
+
+
+@app.post("/clear-extractions")
+def clear_ext():
+    from utils.direct_ocr_extractor import clear_extractions
+    clear_extractions()
+    return {"message": "Extractions cleared"}
+
+
+
+
+ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"]
+MIME_TO_EXT = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}
+
+
+def _normalise_mime(raw: str) -> str:
+    """Strip parameters, lowercase, and alias image/jpg -> image/jpeg."""
+    mime = raw.split(";")[0].strip().lower() if raw else ""
+    return "image/jpeg" if mime == "image/jpg" else mime
 
 
 @app.post("/extract-OCR")
 async def extractOCR(request: Request):
-    content_type = request.headers.get("Content-Type")
+    content_type = _normalise_mime(request.headers.get("Content-Type", ""))
     schema = request.headers.get("Schema")
-    allowed_types = ["application/pdf", "image/jpeg", "image/png"]
-    if content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    if content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported Content-Type '{content_type}'. Must be one of: {ALLOWED_MIME_TYPES}"
+        )
+    if schema not in {"voucher", "bankStatement", "invoice"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing or invalid Schema header: '{schema}'. Must be voucher, bankStatement, or invoice."
+        )
+
     file_bytes = await request.body()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Request body is empty — no file data received.")
+
+    # Cache for the optional subsequent /upload-to-AWS call
     binary_redis_client.set('cached_file', file_bytes, ex=600)
     redis_client.set('cached_file_type', content_type, ex=600)
-    return ocr_extraction(file_bytes, content_type, schema)
+
+    try:
+        return ocr_extraction(file_bytes, content_type, schema)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR extraction failed: {str(e)}")
+
 
 @app.post("/upload-to-AWS")
 async def upload_to_AWS(request: Request):
-    content_type = redis_client.get('cached_file_type')
+    content_type = redis_client.get('cached_file_type') or ""
     schema = request.headers.get("Schema")
-    allowed_types = ["application/pdf", "image/jpeg", "image/png"]
-    ext = [".pdf", ".jpg", ".png"]
-    if content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    if content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid cached file type: '{content_type}'")
+
     file_bytes = binary_redis_client.get('cached_file')
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="No cached file found. Call /extract-OCR first.")
+
+    ext = MIME_TO_EXT[content_type]
     file_name = str(uuid.uuid4())
-    redis_client.set("file_key", f'{file_name}{ext[allowed_types.index(content_type)]}', ex=600)
-    prefix = "bank_statements" if schema == "bankStatement" else "vouchers"
+    s3_key = f"{'bank_statements' if schema == 'bankStatement' else 'vouchers'}/{file_name}{ext}"
+    redis_client.set("file_key", s3_key, ex=600)
+
     try:
         response = s3.put_object(
             Bucket=bucket,
-            Key=f'{prefix}/{file_name}{ext[allowed_types.index(content_type)]}',
-            Body=file_bytes,                  # Pass the byte array directly here
+            Key=s3_key,
+            Body=file_bytes,
             ContentType=content_type
-            )
-        
+        )
         status_code = response['ResponseMetadata']['HTTPStatusCode']
-    
         if status_code == 200:
-            print("Upload successful!")
-            print(f"File ETag (MD5 Hash): {response['ETag']}")
+            print(f"Upload successful! ETag: {response['ETag']}")
         else:
             print(f"Upload failed with status code: {status_code}")
     except ClientError as e:
-        # Catches AWS-specific errors (Access Denied, Bucket Not Found, etc.)
         print(f"AWS Error: {e.response['Error']['Message']}")
+        raise HTTPException(status_code=502, detail=f"AWS upload failed: {e.response['Error']['Message']}")
     except Exception as e:
-        # Catches network timeouts or system errors
-        print(f"An unexpected error occurred: {e}")
+        print(f"Unexpected error during upload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/add-voucher")
 def add_voucher(payload: List[VoucherSchema], db: Session = Depends(get_db)):
@@ -366,6 +541,181 @@ def delete_voucher(voucher_id: int, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     return {"message": "Voucher deleted successfully"}
+
+@app.get("/get-presigned-url")
+def get_presigned_url(file_key: str):
+    try:
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": file_key},
+            ExpiresIn=3600
+        )
+        return {"url": presigned_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"S3 error: {str(e)}")
+
+@app.get("/get-file")
+def get_file(file_key: str):
+    """Download a file from S3 server-side and stream it to the client.
+    Avoids direct browser → S3 fetch which fails when S3 CORS is not configured.
+    Falls back to prefixed keys to handle legacy records stored without folder prefix.
+    """
+    ext_to_mime = {
+        "pdf":  "application/pdf",
+        "jpg":  "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png":  "image/png",
+        "gif":  "image/gif",
+        "webp": "image/webp",
+    }
+    ext = file_key.rsplit(".", 1)[-1].lower() if "." in file_key else ""
+    media_type = ext_to_mime.get(ext, "application/octet-stream")
+
+    # Build candidate keys: try the key as-is first, then common folder prefixes
+    # for legacy records that were stored without the folder prefix.
+    bare_name = file_key.split("/")[-1]   # strips any existing prefix
+    candidates = [file_key]
+    if "/" not in file_key:
+        # Key has no folder — it's a legacy bare filename; try both folders
+        candidates += [f"vouchers/{file_key}", f"bank_statements/{file_key}"]
+
+    file_bytes = None
+    resolved_key = None
+    last_error = None
+
+    for key in candidates:
+        try:
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            file_bytes = obj["Body"].read()
+            resolved_key = key
+            break
+        except ClientError as e:
+            code = e.response["Error"]["Code"]
+            if code == "NoSuchKey":
+                last_error = e
+                continue   # try next candidate
+            raise HTTPException(status_code=502, detail=f"S3 error ({code}): {e.response['Error']['Message']}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    if file_bytes is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"File not found in S3. Tried keys: {candidates}"
+        )
+
+    return Response(
+        content=file_bytes,
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{bare_name}"'},
+    )
+
+
+
+@app.post("/pending-vouchers")
+def create_pending_voucher(payload: PendingVoucherInputSchema, db: Session = Depends(get_db)):
+    file_key = payload.file_key or redis_client.get("file_key")
+    if isinstance(file_key, bytes):
+        file_key = file_key.decode("utf-8")
+    db_item = PendingVouchers(
+        voucher_type=payload.voucher_type,
+        date=payload.date,
+        voucher_no=payload.voucher_no,
+        party=payload.party,
+        items=payload.items or [],
+        amount=payload.amount or 0.0,
+        gst_amount=payload.gst_amount or 0.0,
+        discount=payload.discount or 0.0,
+        file_key=file_key,
+        status="pending"
+    )
+    db.add(db_item)
+    try:
+        db.commit()
+        db.refresh(db_item)
+        if not payload.file_key:
+            redis_client.delete("file_key")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return _pv_to_dict(db_item)
+
+def _pv_to_dict(pv):
+    return {
+        "id": pv.id,
+        "voucher_type": pv.voucher_type,
+        "date": pv.date,
+        "voucher_no": pv.voucher_no,
+        "party": pv.party,
+        "items": pv.items,
+        "amount": pv.amount,
+        "gst_amount": pv.gst_amount,
+        "discount": pv.discount,
+        "file_key": pv.file_key,
+        "status": pv.status,
+    }
+
+@app.get("/pending-vouchers")
+def get_pending_vouchers(db: Session = Depends(get_db)):
+    rows = db.query(PendingVouchers).filter(PendingVouchers.status == "pending").order_by(PendingVouchers.id.asc()).all()
+    return [_pv_to_dict(r) for r in rows]
+
+@app.get("/pending-vouchers/stats")
+def get_pending_stats(db: Session = Depends(get_db)):
+    pending_count = db.query(PendingVouchers).filter(PendingVouchers.status == "pending").count()
+    done_count = db.query(PendingVouchers).filter(PendingVouchers.status.in_(["accepted", "rejected"])).count()
+    total_count = db.query(PendingVouchers).count()
+    return {
+        "pending": pending_count,
+        "done": done_count,
+        "total": total_count
+    }
+
+@app.post("/pending-vouchers/{item_id}/accept")
+def accept_pending_voucher(item_id: int, payload: VoucherSchema, db: Session = Depends(get_db)):
+    pending = db.query(PendingVouchers).filter(PendingVouchers.id == item_id).first()
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending voucher not found")
+    
+    # Add to Vouchers table
+    voucher = Vouchers(
+        voucher_type=payload.voucher_type,
+        date=payload.date,
+        voucher_no=payload.voucher_no,
+        party=payload.party,
+        items=payload.items,
+        amount=payload.amount,
+        gst_amount=payload.gst_amount,
+        discount=payload.discount,
+        status="accepted",
+        file_key=pending.file_key,
+        meta_type=payload.meta_type,
+        meta=payload.meta
+    )
+    db.add(voucher)
+    pending.status = "accepted"
+    
+    try:
+        db.commit()
+        db.refresh(voucher)
+        db.refresh(pending)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {"message": "Voucher approved and saved", "voucher_id": voucher.id}
+
+@app.post("/pending-vouchers/{item_id}/reject")
+def reject_pending_voucher(item_id: int, db: Session = Depends(get_db)):
+    pending = db.query(PendingVouchers).filter(PendingVouchers.id == item_id).first()
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending voucher not found")
+    pending.status = "rejected"
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {"message": "Voucher rejected"}
 
 def _bs_to_dict(bs):
     return {
@@ -905,15 +1255,19 @@ def gen_invoice(payload: InvoiceGenerationSchema):
 def sync_invoice_stock(payload: InvoiceSyncSchema, db: Session = Depends(get_db)):
     """
     Deduct (revert=False) or restore (revert=True) stock and godown quantities
-    based on the items listed in an invoice.  Each item specifies an exact godown.
+    based on the items listed in an invoice. Each item specifies an exact godown.
     """
     warnings_list = []
     for entry in payload.items:
-        item_name   = entry.item_name
+        item_name   = (entry.item_name or '').strip()
         qty         = entry.qty
-        godown_name = entry.godown  # may be None for legacy vouchers without a godown field
+        godown_name = (entry.godown or '').strip()
 
-        stock_row = db.query(stock).filter(stock.item == item_name).first()
+        if not item_name:
+            continue
+
+        # Case-insensitive stock lookup
+        stock_row = db.query(stock).filter(func.lower(stock.item) == item_name.lower()).first()
         if not stock_row:
             warnings_list.append(f"Stock item '{item_name}' not found – skipped.")
             continue
@@ -927,21 +1281,29 @@ def sync_invoice_stock(payload: InvoiceSyncSchema, db: Session = Depends(get_db)
         # ── Adjust the specific godown quantity ────────────────────────────────
         if godown_name:
             current_godowns = dict(stock_row.godowns or {})
+            
+            # Find matching key in current_godowns dict ignoring case
+            target_key = godown_name
+            for k in current_godowns.keys():
+                if k.strip().lower() == godown_name.lower():
+                    target_key = k
+                    break
+
             if payload.revert:
-                current_godowns[godown_name] = current_godowns.get(godown_name, 0) + qty
+                current_godowns[target_key] = current_godowns.get(target_key, 0) + qty
             else:
-                current_godowns[godown_name] = max(0, current_godowns.get(godown_name, 0) - qty)
+                current_godowns[target_key] = max(0, current_godowns.get(target_key, 0) - qty)
             stock_row.godowns = current_godowns
 
             # Sync the godown table record (items list inside each godown)
-            gd_row = db.query(godown).filter(godown.godown_name == godown_name).first()
+            gd_row = db.query(godown).filter(func.lower(godown.godown_name) == godown_name.lower()).first()
             if gd_row:
                 items_list = list(gd_row.items or [])
                 updated    = False
                 new_items  = []
                 for gd_item in items_list:
-                    e_name = gd_item.get('itemName') or gd_item.get('name') or ''
-                    if e_name == item_name:
+                    e_name = (gd_item.get('itemName') or gd_item.get('name') or '').strip()
+                    if e_name.lower() == item_name.lower():
                         new_qty = gd_item.get('quantity', 0)
                         new_qty = (new_qty + qty) if payload.revert else max(0, new_qty - qty)
                         gd_item = dict(gd_item)
@@ -968,4 +1330,179 @@ def sync_invoice_stock(payload: InvoiceSyncSchema, db: Session = Depends(get_db)
     if warnings_list:
         result["warnings"] = warnings_list
     return result
+
+@app.get("/whatsapp/status")
+def whatsapp_get():
+    return {"status": "ok", "detail": "success"}
+
+@app.post("/whatsapp/read")
+def whatsapp_read():
+    return {"status": "ok", "detail": "success"}
+
+# ── WhatsApp Integration Endpoints ─────────────────────────────────────────────
+
+@app.get("/webhook/whatsapp")
+def verify_whatsapp_webhook(request: Request):
+    """WhatsApp Cloud API Webhook Verification Endpoint."""
+    params = request.query_params
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge")
+
+    if mode == "subscribe" and token == WHATSAPP_VERIFY_TOKEN:
+        return Response(content=challenge, media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+@app.post("/webhook/whatsapp")
+async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
+    """Inbound WhatsApp Event & Message Webhook."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    result = process_whatsapp_event(body, db)
+    return result
+
+@app.post("/whatsapp/session/reset")
+def reset_whatsapp_session(payload: WhatsAppResetSessionSchema):
+    """Internal endpoint to force-reset a WhatsApp conversation session."""
+    clear_session(payload.wa_id)
+    return {"message": f"Session for wa_id '{payload.wa_id}' reset to MAIN_MENU"}
+
+@app.post("/invoices/ingest")
+def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(get_db)):
+    """Accepts file/file_key + business_id/user_id + source=whatsapp, pushes to processing queue."""
+    file_key = payload.file_key or f"whatsapp/ingest_{uuid.uuid4()}.pdf"
+    pv = PendingVouchers(
+        voucher_type="Purchase",
+        party="WhatsApp Ingest",
+        amount=0.0,
+        gst_amount=0.0,
+        discount=0.0,
+        file_key=file_key,
+        status="pending"
+    )
+    db.add(pv)
+    try:
+        db.commit()
+        db.refresh(pv)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {
+        "message": "Invoice ingested successfully into processing queue",
+        "pending_voucher_id": pv.id,
+        "file_key": file_key,
+        "source": payload.source
+    }
+
+@app.get("/invoices/batch-status/{batch_id}")
+def get_batch_status(batch_id: str, db: Session = Depends(get_db)):
+    """Poll/aggregate batch processing results for summary message."""
+    pattern = f"%{batch_id}%"
+    pending_items = db.query(PendingVouchers).filter(PendingVouchers.file_key.like(pattern)).all()
+    total_received = len(pending_items)
+    processed_count = sum(1 for item in pending_items if item.status == "accepted")
+    rejected_count = sum(1 for item in pending_items if item.status == "rejected")
+    pending_count = sum(1 for item in pending_items if item.status == "pending")
+
+    return {
+        "batch_id": batch_id,
+        "total_received": total_received,
+        "processed_count": processed_count,
+        "rejected_count": rejected_count,
+        "pending_review": pending_count,
+        "status": "completed" if pending_count == 0 else "processing"
+    }
+
+@app.post("/reports/generate")
+def generate_report_endpoint(payload: ReportGenerateSchema, db: Session = Depends(get_db)):
+    """{business_id/user_id, report_type, period} -> returns report file & summary."""
+    user_id = payload.user_id or payload.business_id or 1
+    report_type = payload.report_type.strip()
+    period = payload.period.strip()
+
+    if report_type.lower() == "inventory":
+        file_path, text_digest = generate_inventory_report(db, user_id, period)
+    elif report_type.lower() == "reconciliation":
+        file_path, text_digest = generate_reconciliation_report(db, user_id, period)
+    elif report_type.lower() == "summary":
+        file_path, text_digest = generate_summary_report(db, user_id, period)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported report_type '{report_type}'")
+
+    filename = os.path.basename(file_path)
+    return {
+        "report_type": report_type,
+        "period": period,
+        "text_digest": text_digest,
+        "file_name": filename,
+        "download_url": f"/get-file?file_key={filename}"
+    }
+
+@app.get("/whatsapp/accounts/{wa_id}")
+def get_whatsapp_account(wa_id: str, db: Session = Depends(get_db)):
+    """Resolve wa_id -> business_id/user_id or check linking status."""
+    acc = db.query(WhatsAppAccount).filter(WhatsAppAccount.wa_id == wa_id).first()
+    if not acc or acc.status != "active" or not acc.user_id:
+        return {
+            "wa_id": wa_id,
+            "linked": False,
+            "status": acc.status if acc else "unlinked",
+            "message": "Account is not linked to any VyomPlus user"
+        }
+    user = db.query(Users).filter(Users.id == acc.user_id).first()
+    return {
+        "wa_id": wa_id,
+        "linked": True,
+        "user_id": acc.user_id,
+        "business_id": acc.user_id,
+        "status": acc.status,
+        "verified_at": acc.verified_at,
+        "user": {
+            "email": user.email if user else None,
+            "full_name": user.full_name if user else None,
+            "mobile": user.mobile if user else None
+        }
+    }
+
+@app.post("/whatsapp/accounts/link")
+def link_whatsapp_account(payload: WhatsAppLinkSchema, db: Session = Depends(get_db)):
+    """Explicitly link a wa_id to a user_id."""
+    user = db.query(Users).filter(Users.id == payload.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    acc = db.query(WhatsAppAccount).filter(WhatsAppAccount.wa_id == payload.wa_id).first()
+    if not acc:
+        acc = WhatsAppAccount(
+            wa_id=payload.wa_id,
+            user_id=payload.user_id,
+            mobile=payload.mobile or user.mobile,
+            status="active",
+            verified_at=datetime.utcnow()
+        )
+        db.add(acc)
+    else:
+        acc.user_id = payload.user_id
+        acc.mobile = payload.mobile or user.mobile
+        acc.status = "active"
+        acc.verified_at = datetime.utcnow()
+
+    try:
+        db.commit()
+        db.refresh(acc)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    return {
+        "message": f"WhatsApp account {payload.wa_id} successfully linked to user {user.email}",
+        "wa_id": acc.wa_id,
+        "user_id": acc.user_id,
+        "status": acc.status
+    }
+
+    
 

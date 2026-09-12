@@ -12,7 +12,7 @@ interface UploadedFile {
 }
 
 interface ExtractionResult {
-  normal?: unknown;
+  normal?: Record<string, unknown> | Record<string, unknown>[];
   csv_file?: unknown;
 }
 
@@ -508,7 +508,15 @@ export default function Home() {
 
                 {uploadedFiles.length > 0 && !loading && (
                   <button
-                    onClick={() => { setUploadedFiles([]); setResult(null); }}
+                    onClick={async () => {
+                      setUploadedFiles([]);
+                      setResult(null);
+                      try {
+                        await fetch(`${BACKEND_URL}/clear-extractions`, { method: "POST" });
+                      } catch (err) {
+                        console.error("Failed to clear backend extractions:", err);
+                      }
+                    }}
                     style={{
                       display: "flex", alignItems: "center", gap: 7,
                       padding: "11px 18px",
@@ -548,47 +556,146 @@ export default function Home() {
                       }}
                     >
                       <i className={tab === "normal" ? "ti ti-file-description" : "ti ti-table"}></i>
-                      {tab === "normal" ? "Extracted Data" : "CSV Output"}
+                      {tab === "normal" ? (
+                        <>
+                          Extracted Data
+                          {Array.isArray(result.normal) && result.normal.length > 0 && (
+                            <span style={{
+                              background: "#2563EB", color: "#fff",
+                              borderRadius: 99, fontSize: 10.5, fontWeight: 700,
+                              padding: "1px 7px", lineHeight: "1.6",
+                            }}>
+                              {result.normal.length}
+                            </span>
+                          )}
+                        </>
+                      ) : "CSV Output"}
                     </button>
                   ))}
                 </div>
 
                 {/* Tab content */}
                 <div style={{ padding: 24 }}>
-                  <div style={{
-                    background: "rgba(0,0,0,0.25)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 12, padding: 20,
-                    maxHeight: 420, overflowY: "auto",
-                    fontFamily: "'Geist Mono', 'Fira Code', monospace",
-                    fontSize: 12.5, lineHeight: 1.7,
-                    color: "var(--color-text-secondary)",
-                    scrollbarWidth: "thin",
-                  }}>
-                    <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                      {JSON.stringify(activeTab === "normal" ? result.normal : result.csv_file, null, 2)}
-                    </pre>
-                  </div>
+                  {activeTab === "normal" ? (
+                    // ── Extracted JSON – one card per file ──────────────────
+                    (() => {
+                      const records = Array.isArray(result.normal)
+                        ? result.normal
+                        : result.normal
+                        ? [result.normal]
+                        : [];
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 520, overflowY: "auto", paddingRight: 4, scrollbarWidth: "thin" }}>
+                          {records.length === 0 && (
+                            <div style={{ color: "var(--color-text-muted)", fontSize: 13, textAlign: "center", padding: "32px 0" }}>
+                              No extraction data yet.
+                            </div>
+                          )}
+                          {records.map((rec, i) => (
+                            <div key={i} style={{
+                              background: "rgba(0,0,0,0.25)",
+                              border: "1px solid var(--color-border)",
+                              borderRadius: 12,
+                              overflow: "hidden",
+                            }}>
+                              {/* Card header */}
+                              <div style={{
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "10px 16px",
+                                borderBottom: "1px solid var(--color-border)",
+                                background: "rgba(37,99,235,0.06)",
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <i className="ti ti-file-description" style={{ color: "#2563EB", fontSize: 15 }}></i>
+                                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-text-primary)" }}>
+                                    File {i + 1}
+                                    {typeof rec.invoice_number === "string" && rec.invoice_number && rec.invoice_number !== "NA"
+                                      ? ` — ${rec.invoice_number}`
+                                      : ""}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(JSON.stringify(rec, null, 2))}
+                                  style={{
+                                    display: "flex", alignItems: "center", gap: 5,
+                                    padding: "4px 10px",
+                                    background: "rgba(37,99,235,0.08)",
+                                    border: "1px solid rgba(37,99,235,0.2)",
+                                    color: "#2563EB", borderRadius: 6,
+                                    fontSize: 11.5, fontWeight: 600, cursor: "pointer",
+                                  }}
+                                >
+                                  <i className="ti ti-copy"></i> Copy
+                                </button>
+                              </div>
+                              {/* Card body */}
+                              <pre style={{
+                                margin: 0,
+                                padding: "14px 16px",
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                                fontFamily: "'Geist Mono', 'Fira Code', monospace",
+                                fontSize: 12, lineHeight: 1.75,
+                                color: "var(--color-text-secondary)",
+                              }}>
+                                {JSON.stringify(rec, null, 2)}
+                              </pre>
+                            </div>
+                          ))}
 
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-                    <button
-                      onClick={() => {
-                        const data = JSON.stringify(activeTab === "normal" ? result.normal : result.csv_file, null, 2);
-                        navigator.clipboard.writeText(data);
-                      }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 7,
-                        padding: "8px 16px",
-                        background: "rgba(37,99,235,0.08)",
-                        border: "1px solid rgba(37,99,235,0.2)",
-                        color: "#2563EB", borderRadius: 8,
-                        fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      <i className="ti ti-copy"></i> Copy to Clipboard
-                    </button>
-                  </div>
+                          {/* Copy-all footer */}
+                          {records.length > 0 && (
+                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(JSON.stringify(records, null, 2))}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 7,
+                                  padding: "8px 16px",
+                                  background: "rgba(37,99,235,0.08)",
+                                  border: "1px solid rgba(37,99,235,0.2)",
+                                  color: "#2563EB", borderRadius: 8,
+                                  fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                                }}
+                              >
+                                <i className="ti ti-copy"></i> Copy All ({records.length})
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    // ── CSV tab ──────────────────────────────────────────────
+                    <div style={{
+                      background: "rgba(0,0,0,0.25)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 12, padding: 20,
+                      maxHeight: 420, overflowY: "auto",
+                      fontFamily: "'Geist Mono', 'Fira Code', monospace",
+                      fontSize: 12.5, lineHeight: 1.7,
+                      color: "var(--color-text-secondary)",
+                      scrollbarWidth: "thin",
+                    }}>
+                      <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                        {JSON.stringify(result.csv_file, null, 2)}
+                      </pre>
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(JSON.stringify(result.csv_file, null, 2))}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 7,
+                            padding: "8px 16px",
+                            background: "rgba(37,99,235,0.08)",
+                            border: "1px solid rgba(37,99,235,0.2)",
+                            color: "#2563EB", borderRadius: 8,
+                            fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                          }}
+                        >
+                          <i className="ti ti-copy"></i> Copy to Clipboard
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

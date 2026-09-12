@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Business Onboarding - VYOM+</title>
+    <!-- Tabler Icons CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="onboarding.css">
+    <script>
+        (function() {
+            var t = localStorage.getItem("gst_theme") || "dark";
+            if (t === "light") document.documentElement.classList.add("light-mode");
+        })();
+    </script>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="onboarding-wrapper">
+        <div class="sidebar-steps">
+            <div class="brand-header">
+                <img src="../favicon.ico" alt="VYOM+" class="brand-logo">
+                <div class="brand-info">
+                    <h2>VYOM+</h2>
+                    <p>Onboarding Process</p>
+                </div>
+            </div>
+            
+            <div class="steps-progress-list">
+                <div class="step-progress-item active" data-step="1">
+                    <span class="step-num">1</span>
+                    <span class="step-label">Account Security</span>
+                </div>
+                <div class="step-progress-item" data-step="2">
+                    <span class="step-num">2</span>
+                    <span class="step-label">Business (Basic)</span>
+                </div>
+                <div class="step-progress-item" data-step="3">
+                    <span class="step-num">3</span>
+                    <span class="step-label">Business (Contact)</span>
+                </div>
+                <div class="step-progress-item" data-step="4">
+                    <span class="step-num">4</span>
+                    <span class="step-label">PAN & Income Tax</span>
+                </div>
+                <div class="step-progress-item" data-step="5">
+                    <span class="step-num">5</span>
+                    <span class="step-label">GST Profile</span>
+                </div>
+                <div class="step-progress-item" data-step="6">
+                    <span class="step-num">6</span>
+                    <span class="step-label">Financial Settings</span>
+                </div>
+                <div class="step-progress-item" data-step="7">
+                    <span class="step-num">7</span>
+                    <span class="step-label">Security Settings</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-panel">
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+
+            <form id="onboardingForm">
+                <!-- Step 1: Account Security -->
+                <div class="onboarding-step-pane active" id="pane-1">
+                    <div class="fade-in-content">
+                        <div class="welcome-text">
+                            <h3>Welcome to VyomPlus Account Security</h3>
+                            <p>Verify and secure your primary credentials to establish initial identity.</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="fullName">Full Name</label>
+                                <input type="text" id="fullName" placeholder="Primary user legal name" required readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Primary Email</label>
+                                <input type="email" id="email" placeholder="Login email address" required readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="mobile">Mobile Phone</label>
+                                <input type="tel" id="mobile" placeholder="Verification phone" required readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="recoveryEmail">Recovery Email</label>
+                                <input type="email" id="recoveryEmail" placeholder="Backup recovery address">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Business Profile (Basic) -->
+                <div class="onboarding-step-pane" id="pane-2">
+                    <div class="fade-in-content">
+                        <div class="welcome-text">
+                            <h3>Let's Set Up Your Business Profile</h3>
+                            <p>Enter key legal information representing your entity constitution.</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="entityType">Business / Legal Entity Type</label>
+                                <select id="entityType" required>
+                                    <option value="">Select Entity Type</option>
+                                    <option value="Proprietorship">Proprietorship</option>
+                                    <option value="Partnership">Partnership</option>
+                                    <option value="LLP">LLP</option>
+                                    <option value="Pvt Ltd">Pvt Ltd Company</option>
+                                    <option value="Public Ltd">Public Ltd Company</option>
+                                    <option value="HUF">HUF</option>
+                                    <option value="Trust">Trust / Society</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="legalName">Legal Name of Entity</label>
+                                <input type="text" id="legalName" placeholder="As registered with authority" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeName">Trade Name / Brand Name</label>
+                                <input type="text" id="tradeName" placeholder="Customer facing brand name">
+                            </div>
+                            <div class="form-group">
+                                <label for="displayName">Business Display Name</label>
+                                <input type="text" id="displayName" placeholder="Name shown throughout system" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="dateIncorporation">Date of Incorporation</label>
+                                <input type="date" id="dateIncorporation" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="natureBusiness">Nature of Business</label>
+                                <select id="natureBusiness" required>
+                                    <option value="">Select Nature</option>
+                                    <option value="trading">Trading</option>
+                                    <option value="manufacturing">Manufacturing</option>
+                                    <option value="services">Services</option>
+                                    <option value="professional">Professional</option>
+                                    <option value="mixed">Mixed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Business Profile (Contact) -->
+                <div class="onboarding-step-pane" id="pane-3">
+                    <div class="fade-in-content">
+                        <div class="welcome-text">
+                            <h3>Business Contact & Scale</h3>
+                            <p>Configure active communication channels and operation scale parameters.</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="bizEmail">Business Email</label>
+                                <input type="email" id="bizEmail" placeholder="support@company.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="bizPhone">Business Phone</label>
+                                <input type="tel" id="bizPhone" placeholder="+91 XXXXX XXXXX">
+                            </div>
+                            <div class="form-group">
+                                <label for="bizWebsite">Business Website</label>
+                                <input type="url" id="bizWebsite" placeholder="https://example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="employeeCount">Number of Employees</label>
+                                <input type="number" id="employeeCount" placeholder="e.g. 50">
+                            </div>
+                            <div class="form-group">
+                                <label for="annualTurnover">Expected Annual Turnover</label>
+                                <select id="annualTurnover">
+                                    <option value="under-20l">Under ₹20 Lakhs</option>
+                                    <option value="20l-1.5c">₹20 Lakhs to ₹1.5 Crores</option>
+                                    <option value="1.5c-5c">₹1.5 Crores to ₹5 Crores</option>
+                                    <option value="over-5c">Over ₹5 Crores</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: PAN & Income Tax -->
+                <div class="onboarding-step-pane" id="pane-4">
+                    <div class="fade-in-content">
+                        <div class="welcome-text">
+                            <h3>Income Tax Jurisdiction & PAN Info</h3>
+                            <p>Upload primary tax credentials required for statutory reporting.</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="pan">Permanent Account Number (PAN)</label>
+                                <input type="text" id="pan" placeholder="10-character PAN" pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="panHolderName">PAN Holder Name</label>
+                                <input type="text" id="panHolderName" placeholder="Name matching PAN record" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tan">TAN (Optional)</label>
+                                <input type="text" id="tan" placeholder="Tax Deduction Account Number">
+                            </div>
+                            <div class="form-group">
+                                <label for="taxJurisdiction">Income Tax Jurisdiction</label>
+                                <input type="text" id="taxJurisdiction" placeholder="e.g. Ward 2(3), Mumbai">
+                            </div>
+                            <div class="form-group">
+                                <label for="panDoc">PAN Document Upload</label>
+                                <input type="file" id="panDoc">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: GST Profile -->
+                <div class="onboarding-step-pane" id="pane-5">
+                    <div class="fade-in-content">
+                        <div class="welcome-text">
+                            <h3>GST Compliance Setup</h3>
+                            <p>Define GSTIN and identity profile mappings for business integration.</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="gstin">GSTIN (Optional)</label>
+                                <input type="text" id="gstin" placeholder="15-character GSTIN" pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}">
+                            </div>
+                            <div class="form-group">
+                                <label for="gstStatus">GST Registration Status</label>
+                                <select id="gstStatus">
+                                    <option value="Active">Active</option>
+                                    <option value="Composition">Composition Scheme</option>
+                                    <option value="Unregistered">Unregistered</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="gstRegDate">GST Registration Date</label>
+                                <input type="date" id="gstRegDate">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Financial Settings -->
+                <div class="onboarding-step-pane" id="pane-6">
+                    <div class="fade-in-content">
+                        <div class="welcome-text">
+                            <h3>Configure Financial Settings</h3>
+                            <p>Establish default reporting currencies, timezones, and books maintenance dates.</p>
+                        </div>
+                        <div class="form-grid">
+                            <!-- Financial Year: From Month -->
+                            <div class="form-group">
+                                <label for="fyFrom">Financial Year — From</label>
+                                <select id="fyFrom">
+                                    <option value="January">January</option>
+                                    <option value="February">February</option>
+                                    <option value="March">March</option>
+                                    <option value="April" selected>April</option>
+                                    <option value="May">May</option>
+                                    <option value="June">June</option>
+                                    <option value="July">July</option>
+                                    <option value="August">August</option>
+                                    <option value="September">September</option>
+                                    <option value="October">October</option>
+                                    <option value="November">November</option>
+                                    <option value="December">December</option>
+                                </select>
+                            </div>
+                            <!-- Financial Year: To Month -->
+                            <div class="form-group">
+                                <label for="fyTo">Financial Year — To</label>
+                                <select id="fyTo">
+                                    <option value="January">January</option>
+                                    <option value="February">February</option>
+                                    <option value="March" selected>March</option>
+                                    <option value="April">April</option>
+                                    <option value="May">May</option>
+                                    <option value="June">June</option>
+                                    <option value="July">July</option>
+                                    <option value="August">August</option>
+                                    <option value="September">September</option>
+                                    <option value="October">October</option>
+                                    <option value="November">November</option>
+                                    <option value="December">December</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="accountingStart">Accounting Books Commenced</label>
+                                <input type="date" id="accountingStart" required>
+                            </div>
+                            <!-- Searchable Currency Dropdown -->
+                            <div class="form-group currency-dropdown-wrapper">
+                                <label for="currencySearch">Base Operating Currency</label>
+                                <div class="currency-dropdown" id="currencyDropdown">
+                                    <input type="text" id="currencySearch" placeholder="Search currency (e.g. INR, USD)" autocomplete="off">
+                                    <div class="currency-dropdown-list" id="currencyList"></div>
+                                </div>
+                                <input type="hidden" id="currencyValue" value="INR">
+                            </div>
+                            <!-- Searchable Timezone Dropdown -->
+                            <div class="form-group currency-dropdown-wrapper">
+                                <label for="timezoneSearch">Default Timezone</label>
+                                <div class="currency-dropdown" id="timezoneDropdown">
+                                    <input type="text" id="timezoneSearch" placeholder="Search timezone (e.g. Asia/Kolkata, UTC)" autocomplete="off">
+                                    <div class="currency-dropdown-list" id="timezoneList"></div>
+                                </div>
+                                <input type="hidden" id="timezoneValue" value="Asia/Kolkata">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 7: Security Settings -->
+                <div class="onboarding-step-pane" id="pane-7">
+                    <div class="fade-in-content">
+                        <div class="welcome-text">
+                            <h3>Enable Security Settings</h3>
+                            <p>Enhance the workspace safety profile using 2FA policies and transaction PIN codes.</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="twoFaEnabled">
+                                <label for="twoFaEnabled">Enable Two-Factor Authentication (2FA)</label>
+                            </div>
+                            <div class="form-group">
+                                <label for="twoFaMethod">2FA Delivery Channel</label>
+                                <select id="twoFaMethod">
+                                    <option value="Email">Email Delivery</option>
+                                    <option value="Authenticator" disabled>Google Authenticator (App - Coming Soon)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="transactionPin">Set 4-Digit Transaction PIN</label>
+                                <input type="password" id="transactionPin" maxlength="4" placeholder="••••">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button type="button" class="onboarding-btn btn-secondary" id="backBtn" disabled>Back</button>
+                    <button type="button" class="onboarding-btn btn-primary" id="nextBtn">Save & Continue</button>
+                    <button type="submit" class="onboarding-btn btn-success" id="submitBtn" style="display: none;">Complete Onboarding</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../console/shared/theme.js"></script>
+    <script src="onboarding.js"></script>
+</body>
+</html>

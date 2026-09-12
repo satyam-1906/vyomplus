@@ -232,9 +232,9 @@ function initDOMEvents() {
         profileDrawerOverlay.classList.toggle("active", open);
     };
 
-    openProfileBtn.addEventListener("click", () => toggleProfileDrawer(true));
-    closeProfileBtn.addEventListener("click", () => toggleProfileDrawer(false));
-    profileDrawerOverlay.addEventListener("click", () => toggleProfileDrawer(false));
+    if (openProfileBtn) openProfileBtn.addEventListener("click", () => toggleProfileDrawer(true));
+    if (closeProfileBtn) closeProfileBtn.addEventListener("click", () => toggleProfileDrawer(false));
+    if (profileDrawerOverlay) profileDrawerOverlay.addEventListener("click", () => toggleProfileDrawer(false));
 
     // GST Filing Wizard Toggles & Navigation
     const openFilingBtn = document.querySelector("#open-filing-btn");
@@ -243,15 +243,17 @@ function initDOMEvents() {
     const filingModalOverlay = document.querySelector("#filing-modal-overlay");
 
     const toggleFilingModal = (open) => {
-        filingModal.classList.toggle("active", open);
-        filingModalOverlay.classList.toggle("active", open);
+        if (filingModal && filingModalOverlay) {
+            filingModal.classList.toggle("active", open);
+            filingModalOverlay.classList.toggle("active", open);
+        }
         if (open) resetFilingSteps();
     };
 
-    openFilingBtn.addEventListener("click", () => toggleFilingModal(true));
-    closeFilingBtn.addEventListener("click", () => toggleFilingModal(false));
-    filingModalOverlay.addEventListener("click", () => toggleFilingModal(false));
-    document.querySelector("#cancel-filing-btn-1").addEventListener("click", () => toggleFilingModal(false));
+    if (openFilingBtn) openFilingBtn.addEventListener("click", () => toggleFilingModal(true));
+    if (closeFilingBtn) closeFilingBtn.addEventListener("click", () => toggleFilingModal(false));
+    if (filingModalOverlay) filingModalOverlay.addEventListener("click", () => toggleFilingModal(false));
+    document.querySelector("#cancel-filing-btn-1")?.addEventListener("click", () => toggleFilingModal(false));
 
     // Step-by-step navigation
     const nextBtn1 = document.querySelector("#next-step-btn-1");
@@ -261,27 +263,31 @@ function initDOMEvents() {
     const fileSubmitBtn = document.querySelector("#file-submit-btn");
     const declarationCheck = document.querySelector("#declaration-check");
 
-    nextBtn1.addEventListener("click", () => showFilingStep(2));
-    nextBtn2.addEventListener("click", () => showFilingStep(3));
-    prevBtn2.addEventListener("click", () => showFilingStep(1));
-    prevBtn3.addEventListener("click", () => showFilingStep(2));
+    if (nextBtn1) nextBtn1.addEventListener("click", () => showFilingStep(2));
+    if (nextBtn2) nextBtn2.addEventListener("click", () => showFilingStep(3));
+    if (prevBtn2) prevBtn2.addEventListener("click", () => showFilingStep(1));
+    if (prevBtn3) prevBtn3.addEventListener("click", () => showFilingStep(2));
 
-    declarationCheck.addEventListener("change", (e) => {
-        fileSubmitBtn.disabled = !e.target.checked;
-    });
-
-    fileSubmitBtn.addEventListener("click", () => {
-        notify("GSTR-3B filed successfully! Reference Number: GST3B-981248912", "success");
-        toggleFilingModal(false);
-        // Add filing success alert to alerts sidebar
-        alerts.unshift({
-            type: "success",
-            title: "GSTR-3B Filed Successfully",
-            desc: "Filing reference GST3B-981248912 generated.",
-            time: "Just now"
+    if (declarationCheck) {
+        declarationCheck.addEventListener("change", (e) => {
+            if (fileSubmitBtn) fileSubmitBtn.disabled = !e.target.checked;
         });
-        renderAlerts();
-    });
+    }
+
+    if (fileSubmitBtn) {
+        fileSubmitBtn.addEventListener("click", () => {
+            notify("GSTR-3B filed successfully! Reference Number: GST3B-981248912", "success");
+            toggleFilingModal(false);
+            // Add filing success alert to alerts sidebar
+            alerts.unshift({
+                type: "success",
+                title: "GSTR-3B Filed Successfully",
+                desc: "Filing reference GST3B-981248912 generated.",
+                time: "Just now"
+            });
+            renderAlerts();
+        });
+    }
 
     // Mock Inventory Addition Dialog
     const openInventoryBtn = document.querySelector("#add-item-mock-btn");
@@ -292,46 +298,52 @@ function initDOMEvents() {
     const inventoryForm = document.querySelector("#inventory-form");
 
     const toggleInventoryModal = (open) => {
-        inventoryModal.classList.toggle("active", open);
-        inventoryModalOverlay.classList.toggle("active", open);
-        if (!open) inventoryForm.reset();
+        if (inventoryModal && inventoryModalOverlay) {
+            inventoryModal.classList.toggle("active", open);
+            inventoryModalOverlay.classList.toggle("active", open);
+        }
+        if (!open && inventoryForm) inventoryForm.reset();
     };
 
-    openInventoryBtn.addEventListener("click", () => toggleInventoryModal(true));
-    closeInventoryBtn.addEventListener("click", () => toggleInventoryModal(false));
-    cancelInventoryBtn.addEventListener("click", () => toggleInventoryModal(false));
-    inventoryModalOverlay.addEventListener("click", () => toggleInventoryModal(false));
+    if (openInventoryBtn) openInventoryBtn.addEventListener("click", () => toggleInventoryModal(true));
+    if (closeInventoryBtn) closeInventoryBtn.addEventListener("click", () => toggleInventoryModal(false));
+    if (cancelInventoryBtn) cancelInventoryBtn.addEventListener("click", () => toggleInventoryModal(false));
+    if (inventoryModalOverlay) inventoryModalOverlay.addEventListener("click", () => toggleInventoryModal(false));
 
-    inventoryForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const name = document.querySelector("#prod-name").value;
-        const sku = document.querySelector("#prod-sku").value;
-        const qty = parseInt(document.querySelector("#prod-qty").value, 10);
-        const price = parseFloat(document.querySelector("#prod-price").value);
-        const gstRate = parseInt(document.querySelector("#prod-gst").value, 10);
+    if (inventoryForm) {
+        inventoryForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const name = document.querySelector("#prod-name").value;
+            const sku = document.querySelector("#prod-sku").value;
+            const qty = parseInt(document.querySelector("#prod-qty").value, 10);
+            const price = parseFloat(document.querySelector("#prod-price").value);
+            const gstRate = parseInt(document.querySelector("#prod-gst").value, 10);
 
-        inventoryItems.unshift({ name, sku, qty, price, gstRate });
-        renderInventory();
+            inventoryItems.unshift({ name, sku, qty, price, gstRate });
+            renderInventory();
 
-        // Add a warning/success notification if stock is low or standard
-        if (qty <= 5) {
-            alerts.unshift({
-                type: "warning",
-                title: "Added Stock Low",
-                desc: `${name} was added with low stock quantity (${qty} units).`,
-                time: "Just now"
-            });
-            renderAlerts();
-        }
+            // Add a warning/success notification if stock is low or standard
+            if (qty <= 5) {
+                alerts.unshift({
+                    type: "warning",
+                    title: "Added Stock Low",
+                    desc: `${name} was added with low stock quantity (${qty} units).`,
+                    time: "Just now"
+                });
+                renderAlerts();
+            }
 
-        toggleInventoryModal(false);
-    });
+            toggleInventoryModal(false);
+        });
+    }
 
     // Search bar logic
     const searchInput = document.querySelector("#inventory-search");
-    searchInput.addEventListener("input", (e) => {
-        renderInventory(e.target.value);
-    });
+    if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+            renderInventory(e.target.value);
+        });
+    }
 }
 
 // Filing Wizard Step display

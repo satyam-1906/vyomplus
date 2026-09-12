@@ -57,7 +57,7 @@ async function register() {
     };
 
     try {
-        const response = await fetch('http://localhost:8000/create', {
+        const response = await fetch('https://vyomplus.onrender.com/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ async function verify() {
     };
 
     try {
-        const response = await fetch('http://localhost:8000/verify', {
+        const response = await fetch('https://vyomplus.onrender.com/verify', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -225,7 +225,7 @@ async function login() {
     };
 
     try {
-        const response = await fetch('http://localhost:8000/login', {
+        const response = await fetch('https://vyomplus.onrender.com/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

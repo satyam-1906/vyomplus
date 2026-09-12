@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Fetch initial user status & pre-populate Step 1
     try {
-        const response = await fetch("http://localhost:8000/onboarding/status", {
+        const response = await fetch("https://vyomplus.onrender.com/onboarding/status", {
             credentials: "include",
             headers: {
                 "Authorization": `Bearer ${getCookie("session_token") || ""}`
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
 
         try {
-            const resp = await fetch("http://localhost:8000/onboarding/complete", {
+            const resp = await fetch("https://vyomplus.onrender.com/onboarding/complete", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

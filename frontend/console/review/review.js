@@ -13,7 +13,7 @@
  *     upload a new file straight from this page (calls /upload-to-AWS → /extract-OCR → /pending-vouchers).
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'https://vyomplus.onrender.com';
 
 let pendingQueue  = [];   // items with status "pending"
 let currentIndex  = 0;    // index within pendingQueue currently being shown

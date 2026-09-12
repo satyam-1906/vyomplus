@@ -14,7 +14,7 @@
         }
 
         try {
-            const response = await fetch("http://localhost:8000/onboarding/status", {
+            const response = await fetch("https://vyomplus.onrender.com/onboarding/status", {
                 credentials: "include",
                 headers: {
                     "Authorization": `Bearer ${token}`

@@ -15,7 +15,7 @@ from utils.report_gen import generate_inventory_report, generate_reconciliation_
 # WhatsApp API configuration
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "vyomplus_verify_token")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "abc")
 
 # Fallback session store in case Redis is down or unavailable
 _IN_MEMORY_SESSIONS: Dict[str, Dict[str, Any]] = {}

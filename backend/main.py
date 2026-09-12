@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 import os, boto3, hashlib, json
 from datetime import datetime, timedelta
 import copy
+import threading
+import time
+import urllib.request
 from sympy import det
 from utils.otp_gen import otp_generator
 from utils.send_email import email_send
@@ -72,6 +75,48 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+KEEPALIVE_INTERVAL_SECONDS = 600
+_keepalive_thread = None
+
+
+def _run_keepalive_loop(base_url: str):
+    """Ping the app root periodically so free-tier deployments stay awake."""
+    target_url = f"{base_url.rstrip('/')}/"
+    while True:
+        try:
+            with urllib.request.urlopen(target_url, timeout=10) as response:
+                response.read()
+        except Exception:
+            pass
+        time.sleep(KEEPALIVE_INTERVAL_SECONDS)
+
+
+@app.get("/keepalive")
+def keepalive(request: Request):
+    """Start a simple self-ping loop that hits the app root every 10 minutes."""
+    global _keepalive_thread
+
+    if _keepalive_thread is not None and _keepalive_thread.is_alive():
+        return {
+            "status": "running",
+            "interval_seconds": KEEPALIVE_INTERVAL_SECONDS,
+            "target": f"{str(request.base_url).rstrip('/')}/"
+        }
+
+    _keepalive_thread = threading.Thread(
+        target=_run_keepalive_loop,
+        args=(str(request.base_url),),
+        daemon=True,
+    )
+    _keepalive_thread.start()
+
+    return {
+        "status": "started",
+        "interval_seconds": KEEPALIVE_INTERVAL_SECONDS,
+        "target": f"{str(request.base_url).rstrip('/')}/"
+    }
+
 
 def get_db():
     db=sessionLocal()

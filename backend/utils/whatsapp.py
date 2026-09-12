@@ -85,7 +85,7 @@ def _call_whatsapp_api(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]
         print(f"[WhatsApp DEV LOG] Outbound payload to {payload.get('to')}: {json.dumps(payload)}")
         return {"status": "simulated", "payload": payload}
 
-    url = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_NUMBER_ID}/{endpoint}"
+    url = f"https://graph.facebook.com/v26.0/{WHATSAPP_PHONE_NUMBER_ID}/{endpoint}"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
@@ -254,6 +254,8 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
         clear_session(wa_id)
         session = get_session(wa_id)
         state = "MAIN_MENU"
+
+    print(text_content)
 
     # --- UNLINKED USER FLOW ---
     if not account or not account.user_id or account.status != "active":

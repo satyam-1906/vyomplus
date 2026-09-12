@@ -11,7 +11,7 @@ from utils.otp_gen import otp_generator
 from utils.send_email import email_send
 from dotenv import load_dotenv
 from schema import InputSchema, ExtractSchema, CreateSchema, EmailSchema, LoginSchema
-from database import Users, sessionLocal, SessionTokens
+from database import Users, BusinessProfile, sessionLocal, SessionTokens
 from botocore.config import Config
 import jwt
 import mimetypes
@@ -29,7 +29,7 @@ from schema import (
     VoucherSchema, BankStatementInputSchema, BRSInputSchema, GodownSchema, UnitSchema, StockSchema,
     NotificationLogSchema, InvoiceGenerationSchema, InvoiceSyncSchema, InvoiceSyncItemSchema,
     PendingVoucherInputSchema, WhatsAppResetSessionSchema, WhatsAppIngestInvoiceSchema,
-    ReportGenerateSchema, WhatsAppLinkSchema
+    ReportGenerateSchema, WhatsAppLinkSchema, BusinessProfileSchema
 )
 from database import (
     Vouchers, BankStatements, BRS, godown, units, stock, notificationLogs, PendingVouchers, WhatsAppAccount
@@ -202,7 +202,7 @@ def get_current_user_from_token(request: Request, db: Session = Depends(get_db))
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         secret = os.getenv("SECRET")
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        payload = jwt.decode(token, secret or '', algorithms=["HS256"])
         username = payload.get("sub")
         user = db.query(Users).filter(Users.username == username).first()
         if not user:
@@ -304,7 +304,7 @@ def extr(payload: ExtractSchema):
             content_type = "application/pdf"
 
         result = ocr_extraction(file_bytes, content_type, 'invoice')
-        normal = result.get('normal')
+        normal = result.get('normal') if isinstance(result, dict) else None
         if normal is None:
             continue
 

@@ -17,3 +17,4 @@ reportlab==5.0.0
 SQLAlchemy==2.0.51
 sympy==1.14.0
 uvicorn
+psycopg2

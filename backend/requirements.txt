@@ -16,3 +16,4 @@ redis==8.1.0
 reportlab==5.0.0
 SQLAlchemy==2.0.51
 sympy==1.14.0
+uvicorn

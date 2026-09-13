@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reconciliations – GST Ledger Hub</title>
+    <title>Reconciliations – VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../shared/sidebar.css">
     <style>
         /* Tabs Styling */
@@ -15,8 +15,8 @@
             display: flex;
             gap: 0;
             margin-bottom: 28px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 14px;
             padding: 5px;
             width: 100%;
@@ -38,10 +38,10 @@
             white-space: nowrap;
             text-align: center;
             position: relative;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Kumbh Sans', sans-serif;
         }
         .tab-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--color-bg-card);
             color: var(--color-text-secondary);
         }
         .tab-btn i {
@@ -65,22 +65,22 @@
             font-size: 9px;
             font-weight: 600;
             color: inherit;
-            opacity: 0.6;
+            opacity: 0.65;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             line-height: 1;
         }
         .tab-btn.active {
-            background: rgba(37, 99, 235, 0.18);
-            color: #93c5fd;
-            box-shadow: 0 2px 12px rgba(37, 99, 235, 0.2), inset 0 0 0 1px rgba(37, 99, 235, 0.35);
+            background: rgba(124, 213, 177, 0.15);
+            color: var(--color-accent);
+            box-shadow: 0 2px 12px rgba(124, 213, 177, 0.15), inset 0 0 0 1px rgba(124, 213, 177, 0.3);
         }
         .tab-btn.active i {
-            color: #60a5fa;
+            color: var(--color-accent);
         }
         .tab-btn.active .tab-badge {
-            color: #93c5fd;
-            opacity: 0.8;
+            color: var(--color-accent);
+            opacity: 0.9;
         }
 
         /* Modal Overlay & Animations */
@@ -90,7 +90,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(8, 12, 24, 0.78);
+            background: rgba(0, 0, 0, 0.65);
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             display: flex;
@@ -107,12 +107,12 @@
             pointer-events: auto;
         }
         .modal-card {
-            background: rgba(17, 27, 48, 0.82);
+            background: var(--color-bg-surface);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--color-border);
             border-radius: 18px;
-            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.04);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.4);
             width: 560px;
             max-width: 92%;
             max-height: 88vh;
@@ -120,7 +120,7 @@
             transform: scale(0.95) translateY(10px);
             transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
             opacity: 0;
-            color: #f8fafc;
+            color: var(--color-text-primary);
             display: flex;
             flex-direction: column;
             position: relative;
@@ -137,16 +137,16 @@
             background: transparent;
         }
         .modal-card::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.12);
+            background: var(--color-border);
             border-radius: 10px;
         }
         .modal-card::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: var(--color-text-muted);
         }
         
         .modal-header {
             padding: 14px 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid var(--color-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -158,12 +158,12 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            color: #f8fafc;
+            color: var(--color-text-primary);
         }
         .modal-close-btn {
             background: transparent;
             border: none;
-            color: #94a3b8;
+            color: var(--color-text-secondary);
             cursor: pointer;
             font-size: 20px;
             display: flex;
@@ -174,8 +174,8 @@
             border-radius: 6px;
         }
         .modal-close-btn:hover {
-            color: #f8fafc;
-            background: rgba(255, 255, 255, 0.05);
+            color: var(--color-text-primary);
+            background: var(--color-bg-card);
         }
         .modal-body {
             padding: 16px 20px;
@@ -197,32 +197,32 @@
         .form-group label {
             font-size: 10.5px;
             font-weight: 600;
-            color: #94a3b8;
+            color: var(--color-text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
         .form-group input, .form-group select {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.09);
+            background: var(--color-bg-input);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
             padding: 8px 12px;
             font-size: 13px;
-            color: #f8fafc;
+            color: var(--color-text-primary);
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .form-group input:focus, .form-group select:focus {
-            border-color: #2563EB;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 2px rgba(124, 213, 177, 0.2);
         }
         .form-group input::placeholder {
-            color: #64748b;
+            color: var(--color-text-muted);
         }
         .form-group input:disabled, .form-group select:disabled {
             opacity: 0.4;
             cursor: not-allowed;
-            background: rgba(15, 23, 42, 0.4);
-            border-color: rgba(255, 255, 255, 0.04);
+            background: var(--color-bg-card);
+            border-color: var(--color-border);
         }
 
         /* Inactive Dynamic Fields Container */
@@ -238,13 +238,13 @@
 
         /* Drag & Drop OCR Area */
         .ocr-drop-area {
-            border: 2px dashed rgba(255, 255, 255, 0.12);
+            border: 2px dashed var(--color-border);
             border-radius: 10px;
             padding: 16px 14px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s ease;
-            background: rgba(15, 23, 42, 0.4);
+            background: var(--color-bg-input);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -252,36 +252,36 @@
             position: relative;
         }
         .ocr-drop-area:hover, .ocr-drop-area.dragover {
-            border-color: #2563EB;
-            background: rgba(37, 99, 235, 0.06);
+            border-color: var(--color-accent);
+            background: rgba(124, 213, 177, 0.06);
         }
         .ocr-drop-area.disabled {
-            border-color: rgba(255, 255, 255, 0.05);
-            background: rgba(15, 23, 42, 0.2);
+            border-color: var(--color-border);
+            background: var(--color-bg-card);
             cursor: not-allowed;
             opacity: 0.5;
         }
         .ocr-drop-area.disabled:hover {
-            border-color: rgba(255, 255, 255, 0.05);
-            background: rgba(15, 23, 42, 0.2);
+            border-color: var(--color-border);
+            background: var(--color-bg-card);
         }
         .ocr-icon {
             font-size: 32px;
-            color: #64748b;
+            color: var(--color-text-muted);
             transition: color 0.2s, transform 0.2s;
         }
         .ocr-drop-area:not(.disabled):hover .ocr-icon, .ocr-drop-area.dragover .ocr-icon {
-            color: #60a5fa;
+            color: var(--color-accent);
             transform: translateY(-2px);
         }
         .ocr-title {
             font-size: 13px;
             font-weight: 600;
-            color: #e2e8f0;
+            color: var(--color-text-primary);
         }
         .ocr-desc {
             font-size: 11px;
-            color: #64748b;
+            color: var(--color-text-muted);
             line-height: 1.4;
         }
         .ocr-file-info {
@@ -291,7 +291,7 @@
             border-radius: 8px;
             padding: 8px 16px;
             font-size: 12px;
-            color: #10B981;
+            color: var(--color-success);
             align-items: center;
             gap: 8px;
             font-weight: 500;
@@ -301,14 +301,14 @@
             align-items: center;
             gap: 8px;
             font-size: 12px;
-            color: #60a5fa;
+            color: var(--color-accent);
             font-weight: 500;
         }
         .spinner {
             width: 16px;
             height: 16px;
-            border: 2px solid rgba(96, 165, 250, 0.2);
-            border-top-color: #60a5fa;
+            border: 2px solid rgba(124, 213, 177, 0.2);
+            border-top-color: var(--color-accent);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -317,9 +317,9 @@
         }
 
         .upload-btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: #f8fafc;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--color-bg-card);
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
             padding: 8px 16px;
             font-size: 12px;
@@ -332,8 +332,8 @@
             margin-top: 4px;
         }
         .upload-btn-secondary:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #64748b;
+            background: var(--color-bg-surface);
+            border-color: var(--color-accent);
         }
         .upload-btn-secondary:disabled {
             opacity: 0.4;
@@ -342,15 +342,15 @@
 
         .modal-footer {
             padding: 12px 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid var(--color-border);
             display: flex;
             justify-content: flex-end;
             gap: 12px;
         }
         .btn-modal-cancel {
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #94a3b8;
+            border: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
             padding: 8px 16px;
             border-radius: 8px;
             font-size: 13px;
@@ -359,14 +359,14 @@
             transition: all 0.2s ease;
         }
         .btn-modal-cancel:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: #f8fafc;
-            border-color: rgba(255, 255, 255, 0.25);
+            background: var(--color-bg-card);
+            color: var(--color-text-primary);
+            border-color: var(--color-border-hover);
         }
         .btn-modal-submit {
-            background: #2563EB;
+            background: var(--color-accent);
             border: none;
-            color: white;
+            color: var(--color-primary-btn-text);
             padding: 8px 16px;
             border-radius: 8px;
             font-size: 13px;
@@ -375,12 +375,19 @@
             transition: all 0.2s ease;
         }
         .btn-modal-submit:hover:not(:disabled) {
-            background: #1d4ed8;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            background: var(--color-secondary);
+            box-shadow: 0 4px 12px rgba(124, 213, 177, 0.3);
         }
         .btn-modal-submit:disabled {
             opacity: 0.4;
             cursor: not-allowed;
+        }
+
+        html.light-mode .modal-overlay {
+            background: rgba(0, 0, 0, 0.4);
+        }
+        html.light-mode .modal-card {
+            box-shadow: 0 24px 60px rgba(9, 36, 42, 0.15);
         }
     </style>
 </head>
@@ -389,8 +396,8 @@
 <div class="console-shell">
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-logo-icon"><i class="ti ti-chart-pie-filled"></i></div>
-            <div class="sidebar-brand-text"><h2>GST Ledger Hub</h2><p>Financial Analytics Suite</p></div>
+            <div class="sidebar-logo-icon"><img src="../../favicon.ico" alt="VYOM+"></div>
+            <div class="sidebar-brand-text"><h2>VYOM+</h2><p>Financial Analytics Suite</p></div>
         </div>
         <div class="sidebar-nav">
             <div class="nav-section-label">Account</div>
@@ -521,6 +528,8 @@
 
         </div>
     </div>
+<script src="../shared/theme.js"></script>
+<script src="../shared/canvas.js"></script>
 <script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script src="reconciliations.js"></script>

@@ -10,7 +10,7 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-family, 'Kumbh Sans', sans-serif);
     background-color: var(--color-bg-deep);
     color: var(--color-text-primary);
     min-height: 100vh;
@@ -64,21 +64,21 @@ body {
 .logo-icon {
     width: 46px;
     height: 46px;
-    background: linear-gradient(135deg, var(--color-primary), #3b82f6);
+    background: linear-gradient(135deg, var(--color-accent), var(--color-secondary));
     border-radius: var(--border-radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 24px;
-    color: white;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    color: var(--color-primary-btn-text);
+    box-shadow: 0 4px 14px rgba(124, 213, 177, 0.25);
 }
 
 .header-title-group h1 {
     font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.02em;
-    background: linear-gradient(120deg, #ffffff, #94a3b8);
+    background: linear-gradient(120deg, var(--color-text-primary), var(--color-accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -122,15 +122,16 @@ body {
 }
 
 .filing-btn {
-    background: var(--color-primary);
-    color: white;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    background: var(--color-accent);
+    color: var(--color-primary-btn-text);
+    box-shadow: 0 4px 12px rgba(124, 213, 177, 0.2);
 }
 
 .filing-btn:hover {
-    background: var(--color-primary-hover);
+    background: var(--color-secondary);
+    color: #040316;
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 6px 18px rgba(124, 213, 177, 0.3);
 }
 
 /* Avatar Button */
@@ -258,8 +259,8 @@ body {
 }
 
 .info-badge {
-    background: rgba(37, 99, 235, 0.12);
-    color: var(--color-primary);
+    background: rgba(124, 213, 177, 0.12);
+    color: var(--color-accent);
 }
 
 /* Profit / Loss Details */
@@ -381,7 +382,7 @@ body {
     border: 1px solid var(--color-border);
     padding: 8px 14px;
     border-radius: var(--border-radius-sm);
-    color: white;
+    color: var(--color-text-primary);
     font-size: 13px;
     outline: none;
     transition: border-color var(--transition-speed) ease;
@@ -457,7 +458,7 @@ body {
 }
 
 .expandable-table tbody tr.details-row {
-    background: rgba(15, 23, 42, 0.4);
+    background: var(--color-bg-card);
     display: none; /* toggled via JS */
 }
 
@@ -663,7 +664,7 @@ body {
     right: -400px;
     width: 380px;
     height: 100vh;
-    background: #0f172a;
+    background: var(--color-bg-surface);
     border-left: 1px solid var(--color-border);
     z-index: 101;
     padding: 32px 24px;
@@ -737,8 +738,8 @@ body {
 }
 
 .profile-badge {
-    background: rgba(37, 99, 235, 0.15);
-    color: var(--color-primary);
+    background: rgba(124, 213, 177, 0.15);
+    color: var(--color-accent);
     padding: 4px 12px;
     font-size: 11px;
     border-radius: 12px;
@@ -848,7 +849,7 @@ body {
     transform: translate(-50%, -50%) scale(0.9);
     width: 90%;
     max-width: 680px;
-    background: #0f172a;
+    background: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-lg);
     z-index: 102;
@@ -934,10 +935,10 @@ body {
 }
 
 .step.active .step-num {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: white;
-    box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-primary-btn-text);
+    box-shadow: 0 0 12px rgba(124, 213, 177, 0.4);
 }
 
 .step.completed .step-num {
@@ -1123,7 +1124,7 @@ body {
 .signatory-selector select {
     background: var(--color-bg-input);
     border: 1px solid var(--color-border);
-    color: white;
+    color: var(--color-text-primary);
     padding: 10px 14px;
     border-radius: var(--border-radius-sm);
     font-size: 13px;
@@ -1154,7 +1155,7 @@ body {
 .form-group input, .form-group select {
     background: var(--color-bg-input);
     border: 1px solid var(--color-border);
-    color: white;
+    color: var(--color-text-primary);
     padding: 10px 14px;
     border-radius: var(--border-radius-sm);
     font-size: 13px;
@@ -1252,4 +1253,42 @@ body {
     gap: 0;
     max-width: 100%;
 }
+
+/* Light Mode Overrides for Overview */
+html.light-mode .dashboard-card {
+    box-shadow: 0 4px 20px rgba(9, 36, 42, 0.06);
+}
+
+html.light-mode .dashboard-card:hover {
+    border-color: var(--color-border-hover);
+}
+
+html.light-mode .upload-btn:hover {
+    background: var(--color-bg-card);
+}
+
+html.light-mode .dashboard-table th {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+html.light-mode .dashboard-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+html.light-mode .txn-items-table th {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+html.light-mode .alert-item {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+html.light-mode .alert-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+html.light-mode .progress-bar-container {
+    background: rgba(0, 0, 0, 0.08);
+}
+
 

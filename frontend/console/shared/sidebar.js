@@ -83,10 +83,14 @@
         }
     });
 
-    // Background Canvas Animation (identical to dashboard)
+    // Background Canvas Animation (Interactive Financial Node Network)
     function initDynamicBackground() {
-        const canvas = document.getElementById('bg-canvas');
-        if (!canvas) return;
+        let canvas = document.getElementById('bg-canvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'bg-canvas';
+            document.body.prepend(canvas);
+        }
         const ctx = canvas.getContext('2d');
 
         let w = canvas.width = window.innerWidth;
@@ -95,40 +99,40 @@
         window.addEventListener('resize', () => {
             w = canvas.width = window.innerWidth;
             h = canvas.height = window.innerHeight;
+            initNodes();
         });
 
         let mouseX = w / 2;
         let mouseY = h / 2;
 
         window.addEventListener('mousemove', (e) => {
-            mouseX += (e.clientX - mouseX) * 0.05;
-            mouseY += (e.clientY - mouseY) * 0.05;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
         });
 
-        let angle = 0;
-
-        function drawMandala(cx, cy, radius, petLength, petals, complexity) {
-            ctx.beginPath();
-            for (let i = 0; i < petals * complexity; i++) {
-                let theta = (i * Math.PI * 2) / (petals * complexity) + angle;
-                let r = radius + Math.sin(theta * petals) * petLength;
-                r += Math.cos(theta * 3 + (mouseX / w) * 10) * 15;
-                let x = cx + Math.cos(theta) * r;
-                let y = cy + Math.sin(theta) * r;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+        let nodes = [];
+        function initNodes() {
+            nodes = [];
+            const count = Math.floor((w * h) / 20000);
+            for (let i = 0; i < count; i++) {
+                nodes.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    vx: (Math.random() - 0.5) * 0.7,
+                    vy: (Math.random() - 0.5) * 0.7,
+                    radius: Math.random() * 2 + 1.5
+                });
             }
-            ctx.closePath();
-            ctx.stroke();
         }
+        initNodes();
 
-        function animate() {
+        function animateCanvas() {
             ctx.clearRect(0, 0, w, h);
 
-            // Get computed theme colors from CSS variables
             const style = getComputedStyle(document.documentElement);
-            const bg1 = style.getPropertyValue('--color-canvas-bg-1').trim() || '#0c152b';
-            const bg2 = style.getPropertyValue('--color-canvas-bg-2').trim() || '#060913';
+            const bg1 = style.getPropertyValue('--color-canvas-bg-1').trim() || '#0a2119';
+            const bg2 = style.getPropertyValue('--color-canvas-bg-2').trim() || '#06140f';
+            const accentColor = style.getPropertyValue('--color-accent').trim() || '#7cd5b1';
 
             let gradient = ctx.createRadialGradient(mouseX, mouseY, 50, w / 2, h / 2, Math.max(w, h));
             gradient.addColorStop(0, bg1);
@@ -136,33 +140,70 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, w, h);
 
-            angle += 0.001;
-            const cx = w / 2, cy = h / 2;
+            for (let i = 0; i < nodes.length; i++) {
+                let n = nodes[i];
+                n.x += n.vx;
+                n.y += n.vy;
 
-            ctx.strokeStyle = 'rgba(37, 99, 235, 0.08)';
-            ctx.lineWidth = 1.5;
-            drawMandala(cx, cy, 250, 45, 12, 4);
+                if (n.x < 0 || n.x > w) n.vx *= -1;
+                if (n.y < 0 || n.y > h) n.vy *= -1;
 
-            ctx.strokeStyle = 'rgba(16, 185, 129, 0.06)';
-            ctx.lineWidth = 1.0;
-            drawMandala(cx, cy, 180, 30, 8, 3);
+                let dx = mouseX - n.x;
+                let dy = mouseY - n.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 180) {
+                    n.x += (dx / dist) * 0.4;
+                    n.y += (dy / dist) * 0.4;
+                }
 
-            ctx.strokeStyle = 'rgba(245, 158, 11, 0.04)';
-            ctx.lineWidth = 1.0;
-            drawMandala(cx, cy, 100, 15, 6, 2);
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-            for (let i = 0; i < 40; i++) {
-                let pX = (Math.sin(angle * (i + 1) * 0.1) * w / 3) + cx;
-                let pY = (Math.cos(angle * (i + 1) * 0.1) * h / 3) + cy;
                 ctx.beginPath();
-                ctx.arc(pX, pY, 2 + (i % 3), 0, Math.PI * 2);
+                ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+                ctx.fillStyle = accentColor;
+                ctx.globalAlpha = 0.35;
                 ctx.fill();
-            }
 
-            requestAnimationFrame(animate);
+                for (let j = i + 1; j < nodes.length; j++) {
+                    let n2 = nodes[j];
+                    let ndx = n.x - n2.x;
+                    let ndy = n.y - n2.y;
+                    let ndist = Math.sqrt(ndx * ndx + ndy * ndy);
+                    if (ndist < 140) {
+                        ctx.beginPath();
+                        ctx.moveTo(n.x, n.y);
+                        ctx.lineTo(n2.x, n2.y);
+                        ctx.strokeStyle = accentColor;
+                        ctx.globalAlpha = (1 - ndist / 140) * 0.16;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+            }
+            ctx.globalAlpha = 1.0;
+
+            requestAnimationFrame(animateCanvas);
         }
-        animate();
+        animateCanvas();
+
+        // 3D Card Physics
+        const tiltCards = document.querySelectorAll('.dashboard-card, .metric-card, .bento-card, .card');
+        tiltCards.forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+
+                const rotateX = ((y - centerY) / centerY) * -5;
+                const rotateY = ((x - centerX) / centerX) * 5;
+
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+            });
+
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0)';
+            });
+        });
     }
 
     document.addEventListener('DOMContentLoaded', initDynamicBackground);

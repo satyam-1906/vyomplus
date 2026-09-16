@@ -681,22 +681,43 @@ def accept_pending_voucher(item_id: int, payload: VoucherSchema, db: Session = D
     if not pending:
         raise HTTPException(status_code=404, detail="Pending voucher not found")
     
-    # Add to Vouchers table
-    voucher = Vouchers(
-        voucher_type=payload.voucher_type,
-        date=payload.date,
-        voucher_no=payload.voucher_no,
-        party=payload.party,
-        items=payload.items,
-        amount=payload.amount,
-        gst_amount=payload.gst_amount,
-        discount=payload.discount,
-        status="accepted",
-        file_key=pending.file_key,
-        meta_type=payload.meta_type,
-        meta=payload.meta
-    )
-    db.add(voucher)
+    # Check if a Voucher record with this file_key or voucher_no already exists in Vouchers table
+    existing_v = None
+    if pending.file_key:
+        existing_v = db.query(Vouchers).filter(Vouchers.file_key == pending.file_key).first()
+    if not existing_v and pending.voucher_no:
+        existing_v = db.query(Vouchers).filter(Vouchers.voucher_no == pending.voucher_no).first()
+
+    if existing_v:
+        existing_v.voucher_type = payload.voucher_type
+        existing_v.date = payload.date
+        existing_v.voucher_no = payload.voucher_no
+        existing_v.party = payload.party
+        existing_v.items = payload.items
+        existing_v.amount = payload.amount
+        existing_v.gst_amount = payload.gst_amount
+        existing_v.discount = payload.discount
+        existing_v.status = "accepted"
+        existing_v.meta_type = payload.meta_type
+        existing_v.meta = payload.meta
+        voucher = existing_v
+    else:
+        # Add to Vouchers table
+        voucher = Vouchers(
+            voucher_type=payload.voucher_type,
+            date=payload.date,
+            voucher_no=payload.voucher_no,
+            party=payload.party,
+            items=payload.items,
+            amount=payload.amount,
+            gst_amount=payload.gst_amount,
+            discount=payload.discount,
+            status="accepted",
+            file_key=pending.file_key,
+            meta_type=payload.meta_type,
+            meta=payload.meta
+        )
+        db.add(voucher)
     pending.status = "accepted"
     
     try:
@@ -1376,10 +1397,15 @@ def reset_whatsapp_session(payload: WhatsAppResetSessionSchema):
 
 @app.post("/invoices/ingest")
 def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(get_db)):
-    """Accepts file/file_key + business_id/user_id + source=whatsapp, pushes to processing queue."""
+    """Accepts file/file_key + business_id/user_id + source=whatsapp, pushes to processing queue and voucher ledger."""
     file_key = payload.file_key or f"whatsapp/ingest_{uuid.uuid4()}.pdf"
+    voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+
     pv = PendingVouchers(
         voucher_type="Purchase",
+        voucher_no=voucher_no,
+        date=today_str,
         party="WhatsApp Ingest",
         amount=0.0,
         gst_amount=0.0,
@@ -1388,15 +1414,32 @@ def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(g
         status="pending"
     )
     db.add(pv)
+
+    vch = Vouchers(
+        voucher_type="Purchase",
+        date=today_str,
+        voucher_no=voucher_no,
+        party="WhatsApp Ingest",
+        items=[],
+        amount=0.0,
+        gst_amount=0.0,
+        discount=0.0,
+        status="pending",
+        file_key=file_key
+    )
+    db.add(vch)
+
     try:
         db.commit()
         db.refresh(pv)
+        db.refresh(vch)
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     return {
-        "message": "Invoice ingested successfully into processing queue",
+        "message": "Invoice ingested successfully into processing queue and voucher ledger",
         "pending_voucher_id": pv.id,
+        "voucher_id": vch.id,
         "file_key": file_key,
         "source": payload.source
     }

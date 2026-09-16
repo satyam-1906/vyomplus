@@ -7,7 +7,7 @@ import urllib.parse
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
-from database import WhatsAppAccount, Users, PendingVouchers
+from database import WhatsAppAccount, Users, PendingVouchers, Vouchers
 from utils.otp_gen import otp_generator
 from utils.send_email import email_send
 from utils.report_gen import generate_inventory_report, generate_reconciliation_report, generate_summary_report
@@ -338,7 +338,46 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
 
     # STATE 1: MAIN_MENU
     if state == "MAIN_MENU":
-        if button_id == "upload_invoice" or "upload" in text_content.lower():
+        if msg_type in ("image", "document") and media_id:
+            batch_id = str(uuid.uuid4())
+            session["state"] = "RECEIVING_INVOICES"
+            session["received_count"] = 1
+            session["batch_id"] = batch_id
+            save_session(wa_id, session)
+
+            file_key = f"whatsapp/{batch_id}/{media_id}.pdf"
+            voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
+            today_str = datetime.utcnow().strftime("%Y-%m-%d")
+
+            pv = PendingVouchers(
+                voucher_type="Purchase",
+                voucher_no=voucher_no,
+                date=today_str,
+                party="WhatsApp Upload",
+                file_key=file_key,
+                status="pending"
+            )
+            db.add(pv)
+
+            vch = Vouchers(
+                voucher_type="Purchase",
+                date=today_str,
+                voucher_no=voucher_no,
+                party="WhatsApp Upload",
+                items=[],
+                amount=0.0,
+                gst_amount=0.0,
+                discount=0.0,
+                status="pending",
+                file_key=file_key
+            )
+            db.add(vch)
+            db.commit()
+
+            send_whatsapp_text(wa_id, "✅ Invoice received and added to voucher ledger, processing…\nSend more or reply *'done'* when finished.")
+            return {"status": "ok", "detail": "received invoice in main menu"}
+
+        elif button_id == "upload_invoice" or "upload" in text_content.lower():
             session["state"] = "RECEIVING_INVOICES"
             session["received_count"] = 0
             session["batch_id"] = str(uuid.uuid4())
@@ -370,14 +409,36 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
             session["received_count"] = count
             save_session(wa_id, session)
 
+            batch_id = session.get('batch_id') or str(uuid.uuid4())
+            file_key = f"whatsapp/{batch_id}/{media_id}.pdf"
+            voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
+            today_str = datetime.utcnow().strftime("%Y-%m-%d")
+
             # Store in PendingVouchers / ingestion queue
             pv = PendingVouchers(
                 voucher_type="Purchase",
+                voucher_no=voucher_no,
+                date=today_str,
                 party="WhatsApp Upload",
-                file_key=f"whatsapp/{session.get('batch_id')}/{media_id}.pdf",
+                file_key=file_key,
                 status="pending"
             )
             db.add(pv)
+
+            # Store in Vouchers ledger table
+            vch = Vouchers(
+                voucher_type="Purchase",
+                date=today_str,
+                voucher_no=voucher_no,
+                party="WhatsApp Upload",
+                items=[],
+                amount=0.0,
+                gst_amount=0.0,
+                discount=0.0,
+                status="pending",
+                file_key=file_key
+            )
+            db.add(vch)
             db.commit()
 
             send_whatsapp_text(wa_id, f"✅ Invoice {count} received, processing…")

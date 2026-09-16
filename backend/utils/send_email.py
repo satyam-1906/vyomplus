@@ -1,42 +1,35 @@
 import os
+import resend
 from dotenv import load_dotenv
+
 load_dotenv()
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-sender_email = os.getenv("MY_EMAIL")
-app_password = os.getenv("APP_PASSWORD")
+
+resend_api_key = os.getenv("RESEND_API_KEY")
+sender_email = os.getenv("SENDER_EMAIL") or os.getenv("MY_EMAIL") or "onboarding@resend.dev"
 
 def email_send(email, otp):
-    if not sender_email or not app_password:
+    if not resend_api_key:
         raise ValueError("creds missing in env")
     if not email:
         raise ValueError("email address missing")
-    subject="Please verify your email"
+    
+    resend.api_key = resend_api_key
+    subject = "Please verify your email"
     body = f"""
      Hello, thanks for choosing our platform.
      Enter this OTP to login: {otp}
      Happy researching!!
      """
-    msg = MIMEMultipart()
-    msg["From"] = sender_email
-    msg["To"] = email
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
-    server=None
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
-        server.starttls()
-        server.login(sender_email, app_password)
-        server.sendmail(sender_email, email, msg.as_string())
+        resend.Emails.send({
+            "from": sender_email,
+            "to": [email],
+            "subject": subject,
+            "text": body
+        })
         return True
     except Exception as e:
         raise e
-    finally:
-        if server:
-            try:
-                server.quit()
-            except Exception:
-                pass
+
 
 

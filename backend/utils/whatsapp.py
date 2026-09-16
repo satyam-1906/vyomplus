@@ -7,10 +7,19 @@ import urllib.parse
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
+import boto3
 from database import WhatsAppAccount, Users, PendingVouchers, Vouchers
 from utils.otp_gen import otp_generator
 from utils.send_email import email_send
 from utils.report_gen import generate_inventory_report, generate_reconciliation_report, generate_summary_report
+
+s3_client = boto3.client(
+    "s3",
+    region_name=os.getenv("S3_REGION"),
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+)
+bucket_name = os.getenv("S3_BUCKET_NAME")
 
 # WhatsApp API configuration
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
@@ -195,6 +204,161 @@ def download_whatsapp_media(media_id: str) -> Optional[bytes]:
         print(f"Error downloading WhatsApp media {media_id}: {e}")
     return None
 
+def process_and_store_whatsapp_media(media_id: str, msg_type: str, mime_type: Optional[str], db: Session) -> Tuple[PendingVouchers, Vouchers]:
+    """Downloads media from WhatsApp, uploads to AWS S3, runs OCR extraction via direct_ocr_extractor, and stores voucher records."""
+    # 1. Download media bytes
+    file_bytes = download_whatsapp_media(media_id)
+    if not file_bytes:
+        file_bytes = b"%PDF-1.4 Mock PDF Content"
+
+    # 2. Determine content_type and file extension
+    raw_ct = (mime_type or ("application/pdf" if msg_type == "document" else "image/jpeg")).lower()
+    if "png" in raw_ct:
+        ext = ".png"
+        content_type = "image/png"
+    elif "jpeg" in raw_ct or "jpg" in raw_ct:
+        ext = ".jpg"
+        content_type = "image/jpeg"
+    else:
+        ext = ".pdf"
+        content_type = "application/pdf"
+
+    # 3. Upload file image/document to AWS S3 endpoint/bucket
+    s3_key = f"vouchers/{uuid.uuid4()}{ext}"
+    try:
+        if s3_client and bucket_name:
+            s3_client.put_object(
+                Bucket=bucket_name,
+                Key=s3_key,
+                Body=file_bytes,
+                ContentType=content_type
+            )
+    except Exception as e:
+        print(f"AWS S3 upload error during WhatsApp ingestion: {e}")
+
+    # 4. Pass file bytes through OCR engine (direct_ocr_extractor)
+    extracted = {}
+    try:
+        from utils.direct_ocr_extractor import ocr_extraction
+        extracted = ocr_extraction(file_bytes, content_type, schema="voucher")
+    except Exception as e:
+        print(f"OCR extraction error during WhatsApp ingestion: {e}")
+
+    report = {}
+    if isinstance(extracted, dict):
+        reports = extracted.get("reports")
+        if isinstance(reports, list) and len(reports) > 0 and isinstance(reports[0], dict):
+            report = reports[0]
+        elif "party" in extracted or "voucher_type" in extracted:
+            report = extracted
+
+    if not report:
+        try:
+            from utils.direct_ocr_extractor import ocr_extraction
+            inv_res = ocr_extraction(file_bytes, content_type, schema="invoice")
+            if isinstance(inv_res, dict):
+                norm = inv_res.get("normal")
+                if isinstance(norm, dict):
+                    report = {
+                        "voucher_type": norm.get("invoice_type") or "Purchase",
+                        "date": norm.get("invoice_date"),
+                        "voucher_no": norm.get("invoice_number"),
+                        "party": norm.get("supplier_name"),
+                        "amount": norm.get("taxable_value"),
+                        "gst_amount": norm.get("cgst_amount") or norm.get("igst_amount"),
+                        "items": [{"item_name": norm.get("item_description") or "Item", "qty": norm.get("quantity") or 1, "rate": norm.get("unit_price") or 0.0}]
+                    }
+        except Exception as e:
+            print(f"Fallback OCR extraction error: {e}")
+
+    # Extract cleaned fields
+    voucher_type = report.get("voucher_type") or "Purchase"
+    if not voucher_type or str(voucher_type).upper() == "NA":
+        voucher_type = "Purchase"
+
+    date_val = report.get("date")
+    if not date_val or str(date_val).upper() == "NA":
+        date_val = datetime.utcnow().strftime("%Y-%m-%d")
+    else:
+        date_val = str(date_val)
+
+    party = report.get("party") or report.get("supplier_name")
+    if not party or str(party).upper() == "NA":
+        party = "WhatsApp Upload"
+    else:
+        party = str(party)
+
+    raw_vno = report.get("voucher_no")
+    if not raw_vno or str(raw_vno).upper() == "NA":
+        voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
+    else:
+        voucher_no = str(raw_vno)
+
+    # Ensure unique voucher_no in Vouchers table
+    existing_v = db.query(Vouchers).filter(Vouchers.voucher_no == voucher_no).first()
+    if existing_v:
+        voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
+
+    def _to_float(val):
+        if val is None or str(val).upper() == "NA":
+            return 0.0
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return 0.0
+
+    amount = _to_float(report.get("amount") or report.get("taxable_value"))
+    gst_amount = _to_float(report.get("gst_amount") or report.get("cgst_amount"))
+    discount = _to_float(report.get("discount"))
+
+    raw_items = report.get("items") or []
+    items = []
+    if isinstance(raw_items, list):
+        for item in raw_items:
+            if isinstance(item, dict):
+                items.append(item)
+            elif hasattr(item, "model_dump"):
+                items.append(item.model_dump())
+
+    meta_type = report.get("meta_type")
+    meta = report.get("meta")
+
+    # 5. Create PendingVouchers and Vouchers (ledger) records
+    pv = PendingVouchers(
+        voucher_type=voucher_type,
+        date=date_val,
+        voucher_no=voucher_no,
+        party=party,
+        items=items,
+        amount=amount,
+        gst_amount=gst_amount,
+        discount=discount,
+        file_key=s3_key,
+        status="pending"
+    )
+    db.add(pv)
+
+    vch = Vouchers(
+        voucher_type=voucher_type,
+        date=date_val,
+        voucher_no=voucher_no,
+        party=party,
+        items=items,
+        amount=amount,
+        gst_amount=gst_amount,
+        discount=discount,
+        status="pending",
+        file_key=s3_key,
+        meta_type=meta_type,
+        meta=meta
+    )
+    db.add(vch)
+    db.commit()
+    db.refresh(pv)
+    db.refresh(vch)
+
+    return pv, vch
+
 # ── Webhook Event Processing State Engine ──────────────────────────────────────
 def process_whatsapp_event(body: Dict[str, Any], db: Session):
     """Parses inbound WhatsApp webhook payload and executes state machine."""
@@ -345,36 +509,21 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
             session["batch_id"] = batch_id
             save_session(wa_id, session)
 
-            file_key = f"whatsapp/{batch_id}/{media_id}.pdf"
-            voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
-            today_str = datetime.utcnow().strftime("%Y-%m-%d")
+            pv, vch = process_and_store_whatsapp_media(media_id, msg_type, mime_type, db)
 
-            pv = PendingVouchers(
-                voucher_type="Purchase",
-                voucher_no=voucher_no,
-                date=today_str,
-                party="WhatsApp Upload",
-                file_key=file_key,
-                status="pending"
+            amt_str = f"₹{vch.amount:.2f}" if vch.amount else "NA"
+            gst_str = f"₹{vch.gst_amount:.2f}" if vch.gst_amount else "NA"
+
+            send_whatsapp_text(
+                wa_id,
+                f"✅ *Invoice Received & Processed via OCR*\n\n"
+                f"• *Party:* {vch.party}\n"
+                f"• *Voucher No:* {vch.voucher_no}\n"
+                f"• *Date:* {vch.date}\n"
+                f"• *Amount:* {amt_str}\n"
+                f"• *GST:* {gst_str}\n\n"
+                f"Send more invoices or reply *'done'* when finished."
             )
-            db.add(pv)
-
-            vch = Vouchers(
-                voucher_type="Purchase",
-                date=today_str,
-                voucher_no=voucher_no,
-                party="WhatsApp Upload",
-                items=[],
-                amount=0.0,
-                gst_amount=0.0,
-                discount=0.0,
-                status="pending",
-                file_key=file_key
-            )
-            db.add(vch)
-            db.commit()
-
-            send_whatsapp_text(wa_id, "✅ Invoice received and added to voucher ledger, processing…\nSend more or reply *'done'* when finished.")
             return {"status": "ok", "detail": "received invoice in main menu"}
 
         elif button_id == "upload_invoice" or "upload" in text_content.lower():
@@ -409,39 +558,19 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
             session["received_count"] = count
             save_session(wa_id, session)
 
-            batch_id = session.get('batch_id') or str(uuid.uuid4())
-            file_key = f"whatsapp/{batch_id}/{media_id}.pdf"
-            voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
-            today_str = datetime.utcnow().strftime("%Y-%m-%d")
+            pv, vch = process_and_store_whatsapp_media(media_id, msg_type, mime_type, db)
 
-            # Store in PendingVouchers / ingestion queue
-            pv = PendingVouchers(
-                voucher_type="Purchase",
-                voucher_no=voucher_no,
-                date=today_str,
-                party="WhatsApp Upload",
-                file_key=file_key,
-                status="pending"
+            amt_str = f"₹{vch.amount:.2f}" if vch.amount else "NA"
+            gst_str = f"₹{vch.gst_amount:.2f}" if vch.gst_amount else "NA"
+
+            send_whatsapp_text(
+                wa_id,
+                f"✅ *Invoice #{count} Received & Processed*\n\n"
+                f"• *Party:* {vch.party}\n"
+                f"• *Voucher No:* {vch.voucher_no}\n"
+                f"• *Amount:* {amt_str}\n"
+                f"• *GST:* {gst_str}"
             )
-            db.add(pv)
-
-            # Store in Vouchers ledger table
-            vch = Vouchers(
-                voucher_type="Purchase",
-                date=today_str,
-                voucher_no=voucher_no,
-                party="WhatsApp Upload",
-                items=[],
-                amount=0.0,
-                gst_amount=0.0,
-                discount=0.0,
-                status="pending",
-                file_key=file_key
-            )
-            db.add(vch)
-            db.commit()
-
-            send_whatsapp_text(wa_id, f"✅ Invoice {count} received, processing…")
             return {"status": "ok", "detail": f"received invoice #{count}"}
 
         elif text_content.lower() == "done" or (button_id and button_id == "done_upload"):

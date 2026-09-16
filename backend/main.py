@@ -1397,33 +1397,91 @@ def reset_whatsapp_session(payload: WhatsAppResetSessionSchema):
 
 @app.post("/invoices/ingest")
 def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(get_db)):
-    """Accepts file/file_key + business_id/user_id + source=whatsapp, pushes to processing queue and voucher ledger."""
+    """Accepts file/file_key + business_id/user_id + source=whatsapp, performs OCR extraction, and creates voucher records."""
     file_key = payload.file_key or f"whatsapp/ingest_{uuid.uuid4()}.pdf"
-    voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
-    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    file_bytes = None
+    content_type = "application/pdf"
+    if payload.file_key and s3 and bucket:
+        try:
+            res = s3.get_object(Bucket=bucket, Key=payload.file_key)
+            file_bytes = res["Body"].read()
+            content_type = res.get("ContentType") or "application/pdf"
+        except Exception as e:
+            print(f"S3 fetch error in ingest_invoice: {e}")
+
+    report = {}
+    if file_bytes:
+        try:
+            from utils.direct_ocr_extractor import ocr_extraction
+            extracted = ocr_extraction(file_bytes, content_type, schema="voucher")
+            if isinstance(extracted, dict):
+                reports = extracted.get("reports")
+                if isinstance(reports, list) and len(reports) > 0 and isinstance(reports[0], dict):
+                    report = reports[0]
+                elif "party" in extracted or "voucher_type" in extracted:
+                    report = extracted
+        except Exception as e:
+            print(f"OCR error in ingest_invoice: {e}")
+
+    voucher_type = report.get("voucher_type") or "Purchase"
+    if not voucher_type or str(voucher_type).upper() == "NA":
+        voucher_type = "Purchase"
+
+    date_val = report.get("date")
+    if not date_val or str(date_val).upper() == "NA":
+        date_val = datetime.utcnow().strftime("%Y-%m-%d")
+    else:
+        date_val = str(date_val)
+
+    party = report.get("party") or report.get("supplier_name")
+    if not party or str(party).upper() == "NA":
+        party = "WhatsApp Ingest"
+    else:
+        party = str(party)
+
+    raw_vno = report.get("voucher_no")
+    if not raw_vno or str(raw_vno).upper() == "NA":
+        voucher_no = f"WA-{uuid.uuid4().hex[:8].upper()}"
+    else:
+        voucher_no = str(raw_vno)
+
+    def _to_float(val):
+        if val is None or str(val).upper() == "NA":
+            return 0.0
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return 0.0
+
+    amount = _to_float(report.get("amount") or report.get("taxable_value"))
+    gst_amount = _to_float(report.get("gst_amount") or report.get("cgst_amount"))
+    discount = _to_float(report.get("discount"))
+    items = report.get("items") or []
 
     pv = PendingVouchers(
-        voucher_type="Purchase",
+        voucher_type=voucher_type,
         voucher_no=voucher_no,
-        date=today_str,
-        party="WhatsApp Ingest",
-        amount=0.0,
-        gst_amount=0.0,
-        discount=0.0,
+        date=date_val,
+        party=party,
+        items=items,
+        amount=amount,
+        gst_amount=gst_amount,
+        discount=discount,
         file_key=file_key,
         status="pending"
     )
     db.add(pv)
 
     vch = Vouchers(
-        voucher_type="Purchase",
-        date=today_str,
+        voucher_type=voucher_type,
+        date=date_val,
         voucher_no=voucher_no,
-        party="WhatsApp Ingest",
-        items=[],
-        amount=0.0,
-        gst_amount=0.0,
-        discount=0.0,
+        party=party,
+        items=items,
+        amount=amount,
+        gst_amount=gst_amount,
+        discount=discount,
         status="pending",
         file_key=file_key
     )
@@ -1441,7 +1499,10 @@ def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(g
         "pending_voucher_id": pv.id,
         "voucher_id": vch.id,
         "file_key": file_key,
-        "source": payload.source
+        "source": payload.source,
+        "extracted_party": party,
+        "extracted_amount": amount,
+        "extracted_gst": gst_amount
     }
 
 @app.get("/invoices/batch-status/{batch_id}")

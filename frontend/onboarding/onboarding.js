@@ -119,6 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const resp = await fetch(`${API_BASE}/onboarding/complete`, {
                 method: "POST",
+                credentials: "include",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${getCookie("session_token") || ""}`
@@ -126,22 +127,32 @@ document.addEventListener("DOMContentLoaded", async () => {
                 body: JSON.stringify(payload)
             });
 
-            localStorage.setItem("onboarding_complete", "true");
-
             if (resp.ok) {
+                // ✅ Only mark complete and redirect when the server confirms
+                localStorage.setItem("onboarding_complete", "true");
                 showToast("🎉 Welcome to VyomPlus! Redirecting to your dashboard…", "success");
+                setTimeout(() => {
+                    window.location.href = "../console/overview/overview.html";
+                }, 1200);
             } else {
-                showToast("Profile saved. Redirecting to dashboard…", "info");
+                // ❌ Server rejected — show error, let user retry
+                let errorMsg = "Submission failed. Please try again.";
+                try {
+                    const errData = await resp.json();
+                    if (errData.detail) errorMsg = errData.detail;
+                } catch (_) {}
+                showToast(`Error (${resp.status}): ${errorMsg}`, "error");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `Complete Onboarding`;
             }
         } catch (err) {
-            localStorage.setItem("onboarding_complete", "true");
-            showToast("Redirecting to your dashboard…", "info");
+            // Network/server unreachable
+            showToast("Network error — please check your connection and try again.", "error");
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `Complete Onboarding`;
         }
-
-        setTimeout(() => {
-            window.location.href = "../console/overview/overview.html";
-        }, 1200);
     });
+
 
     function showStep(step) {
         panes.forEach(pane => pane.classList.remove("active"));

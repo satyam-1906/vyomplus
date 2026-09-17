@@ -1,5 +1,10 @@
 (function() {
-    // 1. Fetch onboarding status from server
+    // ──────────────────────────────────────────────────────────────────────
+    //  VyomPlus Onboarding Guard
+    //  Priority order for "is onboarding done?":
+    //   1. localStorage fast-path (set by login AND by successful onboarding submit)
+    //   2. Live server call to /onboarding/status (authoritative)
+    // ──────────────────────────────────────────────────────────────────────
     async function checkOnboardingStatus() {
         const currentPath = window.location.pathname;
         // Don't guard onboarding or login routes to avoid infinite redirection loops
@@ -13,6 +18,11 @@
             return;
         }
 
+        // ── Fast-path: if localStorage already confirms completion, skip the API call
+        if (localStorage.getItem("onboarding_complete") === "true") {
+            return;
+        }
+
         try {
             const response = await fetch("https://vyomplus.onrender.com/onboarding/status", {
                 credentials: "include",
@@ -20,17 +30,25 @@
                     "Authorization": `Bearer ${token}`
                 }
             });
+
             if (response.ok) {
                 const data = await response.json();
-                if (!data.onboarding_complete) {
+                if (data.onboarding_complete) {
+                    // Sync localStorage so future page loads skip the API call
+                    localStorage.setItem("onboarding_complete", "true");
+                } else {
                     injectWarningStrip();
                     restrictNavigation(currentPath);
                 }
             } else if (response.status === 401) {
+                // Token expired — clear everything and go to login
+                localStorage.removeItem("onboarding_complete");
                 window.location.href = "/frontend/loginNAuth/login.html";
             }
+            // Any other error (503 server sleeping, network failure) → fail open:
+            // don't block the user; they may have already completed onboarding.
         } catch (e) {
-            console.error("VyomPlus Onboarding Guard Check Failed", e);
+            console.warn("VyomPlus Onboarding Guard: network check failed, failing open.", e);
         }
     }
 
@@ -74,7 +92,7 @@
     }
 
     function restrictNavigation(currentPath) {
-        // Only inventory page is allowed if onboarding is incomplete
+        // Only inventory page and profile page are accessible if onboarding is incomplete
         if (!currentPath.includes("inventory.html") && !currentPath.includes("profile.html")) {
             showOverlayModal();
         }

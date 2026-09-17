@@ -244,6 +244,10 @@ async function login() {
             
             // Set cookie manually in JS in case backend cookies are blocked (cross-origin)
             document.cookie = `session_token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+            if (data.unique_id) {
+                document.cookie = `unique_id=${data.unique_id}; path=/; max-age=604800; SameSite=Lax`;
+                localStorage.setItem('unique_id', data.unique_id);
+            }
             
             localStorage.setItem('email', email);
             localStorage.setItem('onboarding_complete', data.onboarding_complete);

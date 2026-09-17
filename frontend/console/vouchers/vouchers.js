@@ -15,6 +15,17 @@ const metricCards = document.querySelectorAll('.glass-card');
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                             */
 /* ------------------------------------------------------------------ */
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+function getUniqueId() {
+    return getCookie('unique_id') || localStorage.getItem('unique_id') || '';
+}
+
 function formatCurrency(num) {
     return '\u20B9' + Number(num).toLocaleString('en-IN');
 }
@@ -208,7 +219,13 @@ function renderVouchers() {
 async function loadVouchers() {
     tbody.innerHTML = '<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--color-text-muted);">Loading vouchers…</td></tr>';
     try {
-        const res = await fetch(API_BASE + '/vouchers');
+        const uid = getUniqueId();
+        const url = uid ? `${API_BASE}/vouchers?unique_id=${encodeURIComponent(uid)}` : `${API_BASE}/vouchers`;
+        const headers = uid ? { 'X-Unique-ID': uid } : {};
+        const res = await fetch(url, {
+            credentials: 'include',
+            headers: headers
+        });
         if (!res.ok) throw new Error('Server returned ' + res.status);
         const data = await res.json();
         vouchers = Array.isArray(data) ? data : [];

@@ -90,11 +90,23 @@ def chek():
     return {"status": "Running"}
 
 def get_current_unique_id(request: Request, response: Response = None, db: Session = Depends(get_db)) -> str:
-    """Dependency to retrieve or establish the current user's unique_id from cookies or headers."""
+    """Dependency to retrieve or establish the current user's unique_id from query params, cookies, headers, or token."""
+    # 1. Check query parameter
+    query_uid = request.query_params.get("unique_id")
+    if query_uid:
+        return query_uid
+
+    # 2. Check cookie
     cookie_uid = request.cookies.get("unique_id")
     if cookie_uid:
         return cookie_uid
 
+    # 3. Check X-Unique-ID header
+    hdr_uid = request.headers.get("X-Unique-ID")
+    if hdr_uid:
+        return hdr_uid
+
+    # 4. Check JWT token
     token = request.cookies.get("session_token")
     if not token:
         auth_header = request.headers.get("Authorization")
@@ -104,6 +116,9 @@ def get_current_unique_id(request: Request, response: Response = None, db: Sessi
         try:
             secret = os.getenv("SECRET")
             payload = jwt.decode(token, secret or '', algorithms=["HS256"])
+            pay_uid = payload.get("unique_id")
+            if pay_uid:
+                return pay_uid
             username = payload.get("sub")
             user = db.query(Users).filter(Users.username == username).first()
             if user:
@@ -116,9 +131,10 @@ def get_current_unique_id(request: Request, response: Response = None, db: Sessi
         except Exception:
             pass
 
-    hdr_uid = request.headers.get("X-Unique-ID")
-    if hdr_uid:
-        return hdr_uid
+    # 5. Check if there's a primary registered user in DB as default fallback
+    primary_user = db.query(Users).filter(Users.unique_id.isnot(None)).first()
+    if primary_user and primary_user.unique_id:
+        return primary_user.unique_id
 
     guest_uid = f"guest-{uuid.uuid4().hex[:12]}"
     if response:

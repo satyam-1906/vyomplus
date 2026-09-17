@@ -441,7 +441,7 @@ async def extractOCR(request: Request):
 
 
 @app.post("/upload-to-AWS")
-async def upload_to_AWS(request: Request):
+async def upload_to_AWS(request: Request, current_uid: str = Depends(get_current_unique_id)):
     content_type = redis_client.get('cached_file_type') or ""
     schema = request.headers.get("Schema")
 
@@ -455,7 +455,8 @@ async def upload_to_AWS(request: Request):
     ext = MIME_TO_EXT[content_type]
     file_name = str(uuid.uuid4())
     s3_key = f"{'bank_statements' if schema == 'bankStatement' else 'vouchers'}/{file_name}{ext}"
-    redis_client.set("file_key", s3_key, ex=600)
+    # Namespace by unique_id so concurrent uploads from different users don't collide
+    redis_client.set(f"file_key:{current_uid}", s3_key, ex=600)
 
     try:
         response = s3.put_object(
@@ -478,7 +479,8 @@ async def upload_to_AWS(request: Request):
 
 @app.post("/add-voucher")
 def add_voucher(payload: List[VoucherSchema], db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    file_key = redis_client.get("file_key")
+    # Use per-user namespaced key to avoid cross-user race conditions
+    file_key = redis_client.get(f"file_key:{current_uid}")
     vouchers_added = []
     for item in payload:
         voucher = Vouchers(
@@ -501,7 +503,7 @@ def add_voucher(payload: List[VoucherSchema], db: Session = Depends(get_db), cur
     
     try:
         db.commit()
-        redis_client.delete("file_key")
+        redis_client.delete(f"file_key:{current_uid}")
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
@@ -684,7 +686,7 @@ def get_file(file_key: str):
 
 @app.post("/pending-vouchers")
 def create_pending_voucher(payload: PendingVoucherInputSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    file_key = payload.file_key or redis_client.get("file_key")
+    file_key = payload.file_key or redis_client.get(f"file_key:{current_uid}")
     if isinstance(file_key, bytes):
         file_key = file_key.decode("utf-8")
     db_item = PendingVouchers(
@@ -705,7 +707,7 @@ def create_pending_voucher(payload: PendingVoucherInputSchema, db: Session = Dep
         db.commit()
         db.refresh(db_item)
         if not payload.file_key:
-            redis_client.delete("file_key")
+            redis_client.delete(f"file_key:{current_uid}")
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

@@ -421,6 +421,20 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
         session = get_session(wa_id)
         state = "MAIN_MENU"
 
+    # If logout keyword is received (global intercept for linked users only)
+    if text_content.lower() in ("logout", "log out", "unlink", "disconnect") and account and account.user_id:
+        session["state"] = "CONFIRM_LOGOUT"
+        save_session(wa_id, session)
+        send_whatsapp_buttons(
+            wa_id,
+            "⚠️ *Logout Confirmation*\n\nThis will unlink your VyomPlus account from WhatsApp. You'll need to re-verify your account to use VyomPlus on WhatsApp again.\n\nAre you sure?",
+            [
+                {"id": "logout_confirm_yes", "title": "✅ Yes, Logout"},
+                {"id": "logout_confirm_no",  "title": "❌ No, Go Back"}
+            ]
+        )
+        return {"status": "ok", "detail": "logout confirmation prompt sent"}
+
     print(text_content)
 
     # --- UNLINKED USER FLOW ---
@@ -549,6 +563,19 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
             save_session(wa_id, session)
             _send_report_types_menu(wa_id)
             return {"status": "ok", "detail": "report type menu displayed"}
+
+        elif button_id == "logout_account" or "logout" in text_content.lower() or "log out" in text_content.lower():
+            session["state"] = "CONFIRM_LOGOUT"
+            save_session(wa_id, session)
+            send_whatsapp_buttons(
+                wa_id,
+                "⚠️ *Logout Confirmation*\n\nThis will unlink your VyomPlus account from WhatsApp. You'll need to re-verify your account to use VyomPlus on WhatsApp again.\n\nAre you sure?",
+                [
+                    {"id": "logout_confirm_yes", "title": "✅ Yes, Logout"},
+                    {"id": "logout_confirm_no",  "title": "❌ No, Go Back"}
+                ]
+            )
+            return {"status": "ok", "detail": "logout confirmation prompt sent"}
 
         else:
             send_whatsapp_text(wa_id, "Sorry, I didn't get that.")
@@ -701,6 +728,49 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
             _send_main_menu(wa_id)
             return {"status": "ok", "detail": "returned to main menu"}
 
+    # STATE 6: CONFIRM_LOGOUT
+    elif state == "CONFIRM_LOGOUT":
+        if button_id == "logout_confirm_yes" or text_content.lower() in ("yes", "y", "confirm", "logout"):
+            # ── Unlink: clear all WA credentials, reset status to pending_link ──
+            if account:
+                account.user_id = None
+                account.status = "pending_link"
+                account.verified_at = None
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+            # Clear session entirely
+            clear_session(wa_id)
+
+            send_whatsapp_text(
+                wa_id,
+                "✅ *You have been logged out.*\n\n"
+                "Your WhatsApp number has been unlinked from VyomPlus.\n"
+                "Send any message to link a new account."
+            )
+            return {"status": "ok", "detail": "account unlinked and session cleared"}
+
+        elif button_id == "logout_confirm_no" or text_content.lower() in ("no", "n", "cancel", "back"):
+            session["state"] = "MAIN_MENU"
+            save_session(wa_id, session)
+            send_whatsapp_text(wa_id, "👍 Logout cancelled.")
+            _send_main_menu(wa_id)
+            return {"status": "ok", "detail": "logout cancelled"}
+
+        else:
+            # Re-prompt if input was unclear
+            send_whatsapp_buttons(
+                wa_id,
+                "Please confirm: do you want to unlink your VyomPlus account from WhatsApp?",
+                [
+                    {"id": "logout_confirm_yes", "title": "✅ Yes, Logout"},
+                    {"id": "logout_confirm_no",  "title": "❌ No, Go Back"}
+                ]
+            )
+            return {"status": "ok", "detail": "logout confirmation re-prompted"}
+
     else:
         clear_session(wa_id)
         _send_main_menu(wa_id)
@@ -708,12 +778,14 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
 
 # ── Helper Menu Displays ───────────────────────────────────────────────────────
 def _send_main_menu(wa_id: str):
+    """Sends the 3-button main menu (max 3 allowed by WhatsApp API)."""
     send_whatsapp_buttons(
         wa_id,
         "Welcome to *VyomPlus*!\nSelect an option below to continue:",
         [
-            {"id": "upload_invoice", "title": "📩 Upload Invoice"},
-            {"id": "view_reports", "title": "📊 Reports"}
+            {"id": "upload_invoice",  "title": "📩 Upload Invoice"},
+            {"id": "view_reports",    "title": "📊 Reports"},
+            {"id": "logout_account", "title": "🔓 Logout"}
         ]
     )
 

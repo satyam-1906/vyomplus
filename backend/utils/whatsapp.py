@@ -204,7 +204,7 @@ def download_whatsapp_media(media_id: str) -> Optional[bytes]:
         print(f"Error downloading WhatsApp media {media_id}: {e}")
     return None
 
-def process_and_store_whatsapp_media(media_id: str, msg_type: str, mime_type: Optional[str], db: Session) -> Tuple[PendingVouchers, Vouchers]:
+def process_and_store_whatsapp_media(media_id: str, msg_type: str, mime_type: Optional[str], db: Session, user_unique_id: Optional[str] = None) -> Tuple[PendingVouchers, Vouchers]:
     """Downloads media from WhatsApp, uploads to AWS S3, runs OCR extraction via direct_ocr_extractor, and stores voucher records."""
     # 1. Download media bytes
     file_bytes = download_whatsapp_media(media_id)
@@ -323,8 +323,9 @@ def process_and_store_whatsapp_media(media_id: str, msg_type: str, mime_type: Op
     meta_type = report.get("meta_type")
     meta = report.get("meta")
 
-    # 5. Create PendingVouchers and Vouchers (ledger) records
+    # 5. Create PendingVouchers and Vouchers (ledger) records with unique_id
     pv = PendingVouchers(
+        unique_id=user_unique_id,
         voucher_type=voucher_type,
         date=date_val,
         voucher_no=voucher_no,
@@ -339,6 +340,7 @@ def process_and_store_whatsapp_media(media_id: str, msg_type: str, mime_type: Op
     db.add(pv)
 
     vch = Vouchers(
+        unique_id=user_unique_id,
         voucher_type=voucher_type,
         date=date_val,
         voucher_no=voucher_no,
@@ -509,7 +511,10 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
             session["batch_id"] = batch_id
             save_session(wa_id, session)
 
-            pv, vch = process_and_store_whatsapp_media(media_id, msg_type, mime_type, db)
+            user_obj = db.query(Users).filter(Users.id == user_id).first() if user_id else None
+            user_uid = user_obj.unique_id if user_obj else None
+
+            pv, vch = process_and_store_whatsapp_media(media_id, msg_type, mime_type, db, user_unique_id=user_uid)
 
             amt_str = f"₹{vch.amount:.2f}" if vch.amount else "NA"
             gst_str = f"₹{vch.gst_amount:.2f}" if vch.gst_amount else "NA"
@@ -558,7 +563,10 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
             session["received_count"] = count
             save_session(wa_id, session)
 
-            pv, vch = process_and_store_whatsapp_media(media_id, msg_type, mime_type, db)
+            user_obj = db.query(Users).filter(Users.id == user_id).first() if user_id else None
+            user_uid = user_obj.unique_id if user_obj else None
+
+            pv, vch = process_and_store_whatsapp_media(media_id, msg_type, mime_type, db, user_unique_id=user_uid)
 
             amt_str = f"₹{vch.amount:.2f}" if vch.amount else "NA"
             gst_str = f"₹{vch.gst_amount:.2f}" if vch.gst_amount else "NA"
@@ -645,14 +653,17 @@ def process_whatsapp_event(body: Dict[str, Any], db: Session):
 
             send_whatsapp_text(wa_id, f"⏳ Generating *{report_type}* report ({period})…")
 
+            user_obj = db.query(Users).filter(Users.id == user_id).first() if user_id else None
+            user_uid = user_obj.unique_id if user_obj else None
+
             # Generate Report
             file_path, text_digest = None, ""
             if report_type == "Inventory":
-                file_path, text_digest = generate_inventory_report(db, user_id, period)
+                file_path, text_digest = generate_inventory_report(db, user_id, period, unique_id=user_uid)
             elif report_type == "Reconciliation":
-                file_path, text_digest = generate_reconciliation_report(db, user_id, period)
+                file_path, text_digest = generate_reconciliation_report(db, user_id, period, unique_id=user_uid)
             else:
-                file_path, text_digest = generate_summary_report(db, user_id, period)
+                file_path, text_digest = generate_summary_report(db, user_id, period, unique_id=user_uid)
 
             # Send result
             send_whatsapp_text(wa_id, text_digest)

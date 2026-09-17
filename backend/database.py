@@ -17,6 +17,7 @@ Base = declarative_base()
 class Users(Base):
     __tablename__ = "test"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     email: Mapped[str] = mapped_column(String, unique=True)
     username: Mapped[str] = mapped_column(String, unique=True)
     password: Mapped[str] = mapped_column(String)
@@ -44,6 +45,7 @@ class Users(Base):
 class BusinessProfile(Base):
     __tablename__ = "business_profiles"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     user_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     
     # Business Profile Fields
@@ -97,6 +99,7 @@ class BusinessProfile(Base):
 class SessionTokens(Base):
     __tablename__ = "sessiontokens"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     username: Mapped[str] = mapped_column(String)
     token_hash: Mapped[str] = mapped_column(String)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
@@ -105,6 +108,7 @@ class SessionTokens(Base):
 class Vouchers(Base):
     __tablename__ = "vouchers"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     voucher_type: Mapped[str] = mapped_column(String)
     date: Mapped[str] = mapped_column(String)
     voucher_no: Mapped[str] = mapped_column(String, unique=True, index=True)
@@ -122,6 +126,7 @@ class Vouchers(Base):
 class PendingVouchers(Base):
     __tablename__ = "pending_vouchers"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     voucher_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     voucher_no: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
@@ -136,6 +141,7 @@ class PendingVouchers(Base):
 class History(Base):
     __tablename__ = "histories"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    unique_id = Column(String, index=True, nullable=True)
     username = Column(String)
     input_file = Column(String, unique=True)
     output_file = Column(String, unique=True)
@@ -144,6 +150,7 @@ class History(Base):
 class BankStatements(Base):
     __tablename__ = "bankStatements"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     bank_name: Mapped[str] = mapped_column(String)
     account_number: Mapped[str] = mapped_column(String)
     referrence_no: Mapped[str] = mapped_column(String)
@@ -159,6 +166,7 @@ class BankStatements(Base):
 class BRS(Base):
     __tablename__ = "BRS"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     transaction_id: Mapped[int] = mapped_column(String)
     voucher_no: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(String)
@@ -169,6 +177,7 @@ class BRS(Base):
 class godown(Base):
     __tablename__ = "godown"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     godown_name: Mapped[str] = mapped_column(String)
     location: Mapped[str] = mapped_column(String)
     items: Mapped[List[Dict[str,Any]]] = mapped_column(JSONB, nullable=false, default=list)
@@ -176,6 +185,7 @@ class godown(Base):
 class units(Base):
     __tablename__ = "units"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     symbol: Mapped[str] = mapped_column(String, unique=True)
     name: Mapped[str] = mapped_column(String)
     conversion: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=false, default=dict)
@@ -186,6 +196,7 @@ class units(Base):
 class stock(Base):
     __tablename__ = "stock"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     item: Mapped[str] = mapped_column(String)
     quantity: Mapped[float] = mapped_column(Float)
     unit: Mapped[str] = mapped_column(String)
@@ -197,12 +208,14 @@ class stock(Base):
 class notificationLogs(Base):
     __tablename__ = "notification_logs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     detail: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 class WhatsAppAccount(Base):
     __tablename__ = "whatsapp_accounts"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unique_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     wa_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     mobile: Mapped[Optional[str]] = mapped_column(String, nullable=True)

@@ -89,6 +89,42 @@ def get_db():
 def chek():
     return {"status": "Running"}
 
+def get_current_unique_id(request: Request, response: Response = None, db: Session = Depends(get_db)) -> str:
+    """Dependency to retrieve or establish the current user's unique_id from cookies or headers."""
+    cookie_uid = request.cookies.get("unique_id")
+    if cookie_uid:
+        return cookie_uid
+
+    token = request.cookies.get("session_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    if token:
+        try:
+            secret = os.getenv("SECRET")
+            payload = jwt.decode(token, secret or '', algorithms=["HS256"])
+            username = payload.get("sub")
+            user = db.query(Users).filter(Users.username == username).first()
+            if user:
+                if not user.unique_id:
+                    user.unique_id = str(uuid.uuid4())
+                    db.commit()
+                if response:
+                    response.set_cookie(key="unique_id", value=user.unique_id, max_age=604800)
+                return user.unique_id
+        except Exception:
+            pass
+
+    hdr_uid = request.headers.get("X-Unique-ID")
+    if hdr_uid:
+        return hdr_uid
+
+    guest_uid = f"guest-{uuid.uuid4().hex[:12]}"
+    if response:
+        response.set_cookie(key="unique_id", value=guest_uid, max_age=604800)
+    return guest_uid
+
 @app.post("/create")
 def crea(payload: CreateSchema, db: Session=Depends(get_db)):
     email, full_name, mobile = payload.email, payload.full_name, payload.mobile
@@ -98,12 +134,14 @@ def crea(payload: CreateSchema, db: Session=Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     password = ph.hash(payload.password)
+    user_uid = str(uuid.uuid4())
     db_note = Users(
         email=email,
         username=username,
         password=password,
         full_name=full_name,
         mobile=mobile,
+        unique_id=user_uid,
         isactive=False,
         onboarding_complete=False,
         account_status="pending_onboarding"
@@ -119,7 +157,7 @@ def crea(payload: CreateSchema, db: Session=Depends(get_db)):
     hashed = hashlib.sha256(otp.encode()).hexdigest()
     redis_client.setex(f"otp:{email}", 600, hashed)
     email_send(email, otp)
-    return {"message": "OTP sent to your email"}
+    return {"message": "OTP sent to your email", "unique_id": user_uid}
 
 @app.post("/verify")
 def veri(payload: EmailSchema, db:Session=Depends(get_db)):
@@ -159,7 +197,10 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
             if not secret:
                 raise HTTPException(status_code=500, detail="JWT secret not configured")
             
-            # Record login details
+            # Ensure unique_id exists
+            if not user.unique_id:
+                user.unique_id = str(uuid.uuid4())
+
             user.last_login = datetime.utcnow()
             try:
                 db.commit()
@@ -170,11 +211,19 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
                 "iss": "auth-service",
                 "sub": user.username,
                 "email": user.email,
+                "unique_id": user.unique_id,
                 "exp": datetime.utcnow() + timedelta(days=7)
             }
             token = jwt.encode(pay, secret, algorithm="HS256")
             response.set_cookie(key="session_token", value=token, max_age=604800)
-            db_no = SessionTokens(username=user.username, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=datetime.utcnow()+timedelta(days=7), revoked=False)
+            response.set_cookie(key="unique_id", value=user.unique_id, max_age=604800)
+            db_no = SessionTokens(
+                username=user.username,
+                unique_id=user.unique_id,
+                token_hash=hashlib.sha256(token.encode()).hexdigest(),
+                expires_at=datetime.utcnow()+timedelta(days=7),
+                revoked=False
+            )
             db.add(db_no)
             try:
                 db.commit()
@@ -185,6 +234,7 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
             return {
                 "message": "login success",
                 "token": token,
+                "unique_id": user.unique_id,
                 "username": user.username,
                 "email": user.email,
                 "full_name": user.full_name,
@@ -195,7 +245,7 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
     else:
         raise HTTPException(status_code=401, detail="verify your email")
 
-def get_current_user_from_token(request: Request, db: Session = Depends(get_db)):
+def get_current_user_from_token(request: Request, response: Response = None, db: Session = Depends(get_db)):
     token = request.cookies.get("session_token")
     if not token:
         # Check authorization header too
@@ -211,6 +261,11 @@ def get_current_user_from_token(request: Request, db: Session = Depends(get_db))
         user = db.query(Users).filter(Users.username == username).first()
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        if not user.unique_id:
+            user.unique_id = str(uuid.uuid4())
+            db.commit()
+        if response:
+            response.set_cookie(key="unique_id", value=user.unique_id, max_age=604800)
         return user
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -412,11 +467,12 @@ async def upload_to_AWS(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/add-voucher")
-def add_voucher(payload: List[VoucherSchema], db: Session = Depends(get_db)):
+def add_voucher(payload: List[VoucherSchema], db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     file_key = redis_client.get("file_key")
     vouchers_added = []
     for item in payload:
         voucher = Vouchers(
+            unique_id=current_uid,
             voucher_type=item.voucher_type,
             date=item.date,
             voucher_no=item.voucher_no,
@@ -462,8 +518,8 @@ def add_voucher(payload: List[VoucherSchema], db: Session = Depends(get_db)):
     ]
 
 @app.get("/vouchers")
-def get_vouchers(db: Session = Depends(get_db)):
-    rows = db.query(Vouchers).order_by(Vouchers.id.desc()).all()
+def get_vouchers(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    rows = db.query(Vouchers).filter(Vouchers.unique_id == current_uid).order_by(Vouchers.id.desc()).all()
     return [
         {
             "id": v.id,
@@ -483,8 +539,8 @@ def get_vouchers(db: Session = Depends(get_db)):
     ]
 
 @app.put("/vouchers/{voucher_id}")
-def update_voucher(voucher_id: int, payload: VoucherSchema, db: Session = Depends(get_db)):
-    voucher = db.query(Vouchers).filter(Vouchers.id == voucher_id).first()
+def update_voucher(voucher_id: int, payload: VoucherSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    voucher = db.query(Vouchers).filter(Vouchers.id == voucher_id, Vouchers.unique_id == current_uid).first()
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
     voucher.voucher_type = payload.voucher_type
@@ -516,8 +572,8 @@ def update_voucher(voucher_id: int, payload: VoucherSchema, db: Session = Depend
     }
 
 @app.get("/vouchers/{voucher_id}")
-def get_single_voucher(voucher_id: int, db: Session = Depends(get_db)):
-    voucher = db.query(Vouchers).filter(Vouchers.id == voucher_id).first()
+def get_single_voucher(voucher_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    voucher = db.query(Vouchers).filter(Vouchers.id == voucher_id, Vouchers.unique_id == current_uid).first()
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
     return {
@@ -534,8 +590,8 @@ def get_single_voucher(voucher_id: int, db: Session = Depends(get_db)):
     }
 
 @app.delete("/vouchers/{voucher_id}")
-def delete_voucher(voucher_id: int, db: Session = Depends(get_db)):
-    voucher = db.query(Vouchers).filter(Vouchers.id == voucher_id).first()
+def delete_voucher(voucher_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    voucher = db.query(Vouchers).filter(Vouchers.id == voucher_id, Vouchers.unique_id == current_uid).first()
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
     try:
@@ -617,11 +673,12 @@ def get_file(file_key: str):
 
 
 @app.post("/pending-vouchers")
-def create_pending_voucher(payload: PendingVoucherInputSchema, db: Session = Depends(get_db)):
+def create_pending_voucher(payload: PendingVoucherInputSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     file_key = payload.file_key or redis_client.get("file_key")
     if isinstance(file_key, bytes):
         file_key = file_key.decode("utf-8")
     db_item = PendingVouchers(
+        unique_id=current_uid,
         voucher_type=payload.voucher_type,
         date=payload.date,
         voucher_no=payload.voucher_no,
@@ -660,15 +717,15 @@ def _pv_to_dict(pv):
     }
 
 @app.get("/pending-vouchers")
-def get_pending_vouchers(db: Session = Depends(get_db)):
-    rows = db.query(PendingVouchers).filter(PendingVouchers.status == "pending").order_by(PendingVouchers.id.asc()).all()
+def get_pending_vouchers(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    rows = db.query(PendingVouchers).filter(PendingVouchers.status == "pending", PendingVouchers.unique_id == current_uid).order_by(PendingVouchers.id.asc()).all()
     return [_pv_to_dict(r) for r in rows]
 
 @app.get("/pending-vouchers/stats")
-def get_pending_stats(db: Session = Depends(get_db)):
-    pending_count = db.query(PendingVouchers).filter(PendingVouchers.status == "pending").count()
-    done_count = db.query(PendingVouchers).filter(PendingVouchers.status.in_(["accepted", "rejected"])).count()
-    total_count = db.query(PendingVouchers).count()
+def get_pending_stats(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    pending_count = db.query(PendingVouchers).filter(PendingVouchers.status == "pending", PendingVouchers.unique_id == current_uid).count()
+    done_count = db.query(PendingVouchers).filter(PendingVouchers.status.in_(["accepted", "rejected"]), PendingVouchers.unique_id == current_uid).count()
+    total_count = db.query(PendingVouchers).filter(PendingVouchers.unique_id == current_uid).count()
     return {
         "pending": pending_count,
         "done": done_count,
@@ -676,17 +733,17 @@ def get_pending_stats(db: Session = Depends(get_db)):
     }
 
 @app.post("/pending-vouchers/{item_id}/accept")
-def accept_pending_voucher(item_id: int, payload: VoucherSchema, db: Session = Depends(get_db)):
-    pending = db.query(PendingVouchers).filter(PendingVouchers.id == item_id).first()
+def accept_pending_voucher(item_id: int, payload: VoucherSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    pending = db.query(PendingVouchers).filter(PendingVouchers.id == item_id, PendingVouchers.unique_id == current_uid).first()
     if not pending:
         raise HTTPException(status_code=404, detail="Pending voucher not found")
     
     # Check if a Voucher record with this file_key or voucher_no already exists in Vouchers table
     existing_v = None
     if pending.file_key:
-        existing_v = db.query(Vouchers).filter(Vouchers.file_key == pending.file_key).first()
+        existing_v = db.query(Vouchers).filter(Vouchers.file_key == pending.file_key, Vouchers.unique_id == current_uid).first()
     if not existing_v and pending.voucher_no:
-        existing_v = db.query(Vouchers).filter(Vouchers.voucher_no == pending.voucher_no).first()
+        existing_v = db.query(Vouchers).filter(Vouchers.voucher_no == pending.voucher_no, Vouchers.unique_id == current_uid).first()
 
     if existing_v:
         existing_v.voucher_type = payload.voucher_type
@@ -704,6 +761,7 @@ def accept_pending_voucher(item_id: int, payload: VoucherSchema, db: Session = D
     else:
         # Add to Vouchers table
         voucher = Vouchers(
+            unique_id=current_uid,
             voucher_type=payload.voucher_type,
             date=payload.date,
             voucher_no=payload.voucher_no,
@@ -730,8 +788,17 @@ def accept_pending_voucher(item_id: int, payload: VoucherSchema, db: Session = D
     return {"message": "Voucher approved and saved", "voucher_id": voucher.id}
 
 @app.post("/pending-vouchers/{item_id}/reject")
-def reject_pending_voucher(item_id: int, db: Session = Depends(get_db)):
-    pending = db.query(PendingVouchers).filter(PendingVouchers.id == item_id).first()
+def reject_pending_voucher(item_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    pending = db.query(PendingVouchers).filter(PendingVouchers.id == item_id, PendingVouchers.unique_id == current_uid).first()
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending voucher not found")
+    pending.status = "rejected"
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {"message": "Voucher rejected"}
     if not pending:
         raise HTTPException(status_code=404, detail="Pending voucher not found")
     pending.status = "rejected"
@@ -759,10 +826,11 @@ def _bs_to_dict(bs):
     }
 
 @app.post("/bank-statements")
-def add_bank_statements(payload: List[BankStatementInputSchema], db: Session = Depends(get_db)):
+def add_bank_statements(payload: List[BankStatementInputSchema], db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     records_added = []
     for item in payload:
         bs = BankStatements(
+            unique_id=current_uid,
             bank_name=item.bank_name,
             account_number=item.account_number,
             referrence_no=item.referrence_no,
@@ -787,20 +855,20 @@ def add_bank_statements(payload: List[BankStatementInputSchema], db: Session = D
     return [_bs_to_dict(r) for r in records_added]
 
 @app.get("/bank-statements")
-def get_bank_statements(db: Session = Depends(get_db)):
-    rows = db.query(BankStatements).order_by(BankStatements.id.desc()).all()
+def get_bank_statements(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    rows = db.query(BankStatements).filter(BankStatements.unique_id == current_uid).order_by(BankStatements.id.desc()).all()
     return [_bs_to_dict(r) for r in rows]
 
 @app.get("/bank-statements/{bs_id}")
-def get_bank_statement(bs_id: int, db: Session = Depends(get_db)):
-    bs = db.query(BankStatements).filter(BankStatements.id == bs_id).first()
+def get_bank_statement(bs_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    bs = db.query(BankStatements).filter(BankStatements.id == bs_id, BankStatements.unique_id == current_uid).first()
     if not bs:
         raise HTTPException(status_code=404, detail="Bank statement not found")
     return _bs_to_dict(bs)
 
 @app.put("/bank-statements/{bs_id}")
-def update_bank_statement(bs_id: int, payload: BankStatementInputSchema, db: Session = Depends(get_db)):
-    bs = db.query(BankStatements).filter(BankStatements.id == bs_id).first()
+def update_bank_statement(bs_id: int, payload: BankStatementInputSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    bs = db.query(BankStatements).filter(BankStatements.id == bs_id, BankStatements.unique_id == current_uid).first()
     if not bs:
         raise HTTPException(status_code=404, detail="Bank statement not found")
     bs.bank_name = payload.bank_name
@@ -823,8 +891,8 @@ def update_bank_statement(bs_id: int, payload: BankStatementInputSchema, db: Ses
     return _bs_to_dict(bs)
 
 @app.delete("/bank-statements/{bs_id}")
-def delete_bank_statement(bs_id: int, db: Session = Depends(get_db)):
-    bs = db.query(BankStatements).filter(BankStatements.id == bs_id).first()
+def delete_bank_statement(bs_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    bs = db.query(BankStatements).filter(BankStatements.id == bs_id, BankStatements.unique_id == current_uid).first()
     if not bs:
         raise HTTPException(status_code=404, detail="Bank statement not found")
     try:
@@ -846,8 +914,9 @@ def _brs_to_dict(b):
     }
 
 @app.post("/BRS")
-def add_BRS(payload: BRSInputSchema, db: Session = Depends(get_db)):
+def add_BRS(payload: BRSInputSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     brs = BRS(
+        unique_id=current_uid,
         transaction_id=payload.transaction_id,
         voucher_no=payload.voucher_no,
         description=payload.description,
@@ -864,13 +933,13 @@ def add_BRS(payload: BRSInputSchema, db: Session = Depends(get_db)):
     return _brs_to_dict(brs)
 
 @app.get("/BRS")
-def get_BRS(db: Session = Depends(get_db)):
-    rows = db.query(BRS).order_by(BRS.id.desc()).all()
+def get_BRS(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    rows = db.query(BRS).filter(BRS.unique_id == current_uid).order_by(BRS.id.desc()).all()
     return [_brs_to_dict(r) for r in rows]
 
 @app.delete("/BRS/{brs_id}")
-def delete_BRS(brs_id: int, db: Session = Depends(get_db)):
-    brs = db.query(BRS).filter(BRS.id == brs_id).first()
+def delete_BRS(brs_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    brs = db.query(BRS).filter(BRS.id == brs_id, BRS.unique_id == current_uid).first()
     if not brs:
         raise HTTPException(status_code=404, detail="BRS record not found")
     bs_id     = brs.transaction_id
@@ -878,13 +947,13 @@ def delete_BRS(brs_id: int, db: Session = Depends(get_db)):
     try:
         db.delete(brs)
         # Revert bank statement to pending, clear party and voucher ref
-        bs = db.query(BankStatements).filter(BankStatements.id == bs_id).first()
+        bs = db.query(BankStatements).filter(BankStatements.id == bs_id, BankStatements.unique_id == current_uid).first()
         if bs:
             bs.reconciliation_status = "pending"
             bs.party_name = ''
             bs.voucher_ref = ''
         # Revert voucher status to Pending
-        vch = db.query(Vouchers).filter(Vouchers.voucher_no == voucher_no).first()
+        vch = db.query(Vouchers).filter(Vouchers.voucher_no == voucher_no, Vouchers.unique_id == current_uid).first()
         if vch:
             vch.status = "Pending"
         db.commit()
@@ -902,8 +971,9 @@ def _godown_to_dict(g):
     }
 
 @app.post("/godown")
-def add_godown(payload: GodownSchema, db: Session = Depends(get_db)):
+def add_godown(payload: GodownSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     new_godown = godown(
+        unique_id = current_uid,
         godown_name = payload.godown_name,
         location = payload.location,
         items = payload.items or []
@@ -918,8 +988,8 @@ def add_godown(payload: GodownSchema, db: Session = Depends(get_db)):
     return new_godown
 
 @app.get("/godown")
-def get_godown(db: Session = Depends(get_db)):
-    rows = db.query(godown).order_by(godown.id.desc()).all()
+def get_godown(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    rows = db.query(godown).filter(godown.unique_id == current_uid).order_by(godown.id.desc()).all()
     return [_godown_to_dict(r) for r in rows]
 
 def _units_to_dict(u):
@@ -934,9 +1004,9 @@ def _units_to_dict(u):
     }
 
 @app.put("/godown/{godown_name}")
-def update_godown(godown_name:str, payload:GodownSchema, db:Session=Depends(get_db)):
+def update_godown(godown_name:str, payload:GodownSchema, db:Session=Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     stock_item: Any
-    row = db.query(godown).filter(godown.godown_name == godown_name).first()
+    row = db.query(godown).filter(godown.godown_name == godown_name, godown.unique_id == current_uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Godown not found")
     old_items = copy.deepcopy(row.items) or []
@@ -944,7 +1014,7 @@ def update_godown(godown_name:str, payload:GodownSchema, db:Session=Depends(get_
 
     item_names = list({(item.get('name') or item.get('itemName')) for item in old_items + new_items if (item.get('name') or item.get('itemName'))})
 
-    stock_rows = db.query(stock).filter(stock.item.in_(item_names)).all()
+    stock_rows = db.query(stock).filter(stock.item.in_(item_names), stock.unique_id == current_uid).all()
     stock_map = {s.item: s for s in stock_rows}
     
     # Update stock item quantities. If a stock item isn't created yet, we do not throw 400.
@@ -983,15 +1053,15 @@ def update_godown(godown_name:str, payload:GodownSchema, db:Session=Depends(get_
     return row
 
 @app.get("/godown/{godown_name}")
-def get_single_godown(godown_name: str, db: Session = Depends(get_db)):
-    row = db.query(godown).filter(godown.godown_name == godown_name).first()
+def get_single_godown(godown_name: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    row = db.query(godown).filter(godown.godown_name == godown_name, godown.unique_id == current_uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Godown not found")
     return _godown_to_dict(row)
 
 @app.delete("/godown/{godown_name}")
-def delete_godown(godown_name: str, db: Session = Depends(get_db)):
-    row = db.query(godown).filter(godown.godown_name == godown_name).first()
+def delete_godown(godown_name: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    row = db.query(godown).filter(godown.godown_name == godown_name, godown.unique_id == current_uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Godown not found")
 
@@ -1002,7 +1072,7 @@ def delete_godown(godown_name: str, db: Session = Depends(get_db)):
         item_qty = item_entry.get("quantity", 0)
         if not item_name:
             continue
-        stock_row = db.query(stock).filter(stock.item == item_name).first()
+        stock_row = db.query(stock).filter(stock.item == item_name, stock.unique_id == current_uid).first()
         if stock_row:
             stock_row.quantity = max(0, (stock_row.quantity or 0) - item_qty)
             current_godowns = dict(stock_row.godowns or {})
@@ -1019,8 +1089,8 @@ def delete_godown(godown_name: str, db: Session = Depends(get_db)):
     return {"message": f"Godown '{godown_name}' deleted successfully"}
 
 @app.put("/stock/{item_name}")
-def update_stock(item_name: str, payload: StockSchema, db: Session = Depends(get_db)):
-    row = db.query(stock).filter(stock.item == item_name).first()
+def update_stock(item_name: str, payload: StockSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    row = db.query(stock).filter(stock.item == item_name, stock.unique_id == current_uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Stock item not found")
 
@@ -1030,7 +1100,7 @@ def update_stock(item_name: str, payload: StockSchema, db: Session = Depends(get
     # Adjust all affected godown records
     all_godown_names = set(old_godowns.keys()) | set(new_godowns.keys())
     for gd_name in all_godown_names:
-        gd_row = db.query(godown).filter(godown.godown_name == gd_name).first()
+        gd_row = db.query(godown).filter(godown.godown_name == gd_name, godown.unique_id == current_uid).first()
         if not gd_row:
             continue
         items_list: list = list(gd_row.items or [])
@@ -1063,14 +1133,14 @@ def update_stock(item_name: str, payload: StockSchema, db: Session = Depends(get
     return _items_to_dict(row)
 
 @app.delete("/stock/{item_name}")
-def delete_stock(item_name: str, db: Session = Depends(get_db)):
-    row = db.query(stock).filter(stock.item == item_name).first()
+def delete_stock(item_name: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    row = db.query(stock).filter(stock.item == item_name, stock.unique_id == current_uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Stock item not found")
 
     # Remove this stock item from every godown it belongs to
     for gd_name, gd_qty in (row.godowns or {}).items():
-        gd_row = db.query(godown).filter(godown.godown_name == gd_name).first()
+        gd_row = db.query(godown).filter(godown.godown_name == gd_name, godown.unique_id == current_uid).first()
         if gd_row:
             items_list = [
                 i for i in (gd_row.items or [])
@@ -1088,8 +1158,9 @@ def delete_stock(item_name: str, db: Session = Depends(get_db)):
     return {"message": f"Stock item '{item_name}' deleted successfully"}
 
 @app.post("/units")
-def add_unit(payload: UnitSchema, db: Session = Depends(get_db)):
+def add_unit(payload: UnitSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     new_unit = units(
+        unique_id = current_uid,
         symbol = payload.symbol,
         name = payload.name,
         conversion = payload.conversion,
@@ -1107,13 +1178,13 @@ def add_unit(payload: UnitSchema, db: Session = Depends(get_db)):
     return new_unit
 
 @app.get("/units")
-def get_units(db: Session = Depends(get_db)):
-    rows = db.query(units).order_by(units.id.desc()).all()
+def get_units(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    rows = db.query(units).filter(units.unique_id == current_uid).order_by(units.id.desc()).all()
     return [_units_to_dict(r) for r in rows]
 
 @app.get("/units/{unit_symbol}")
-def get_conversion(unit_symbol: str, db: Session = Depends(get_db)):
-    row = db.query(units).filter(units.symbol == unit_symbol).first()
+def get_conversion(unit_symbol: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    row = db.query(units).filter(units.symbol == unit_symbol, units.unique_id == current_uid).first()
     try:
         if row is not None:
             return row.conversion
@@ -1121,8 +1192,8 @@ def get_conversion(unit_symbol: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
 @app.delete("/units/{unit_symbol}")
-def delete_unit(unit_symbol: str, db: Session = Depends(get_db)):
-    row = db.query(units).filter(units.symbol == unit_symbol).first()
+def delete_unit(unit_symbol: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    row = db.query(units).filter(units.symbol == unit_symbol, units.unique_id == current_uid).first()
     try:
         if row is not None:
             if row.type == 'simple' and row.used > 0:
@@ -1146,8 +1217,9 @@ def _items_to_dict(i):
     }
 
 @app.post("/stock")
-def add_stock(payload: StockSchema, db: Session = Depends(get_db)):
+def add_stock(payload: StockSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     new_stock = stock(
+        unique_id = current_uid,
         item = payload.item,
         quantity = payload.quantity,
         unit = payload.unit,
@@ -1160,7 +1232,7 @@ def add_stock(payload: StockSchema, db: Session = Depends(get_db)):
 
     # Sync: For every godown specified in the stock item payload, add the item to that godown's items list
     for gd_name, gd_qty in (payload.godowns or {}).items():
-        gd_row = db.query(godown).filter(godown.godown_name == gd_name).first()
+        gd_row = db.query(godown).filter(godown.godown_name == gd_name, godown.unique_id == current_uid).first()
         if gd_row:
             items_list = list(gd_row.items or [])
             # Filter out existing entries for safety
@@ -1182,8 +1254,8 @@ def add_stock(payload: StockSchema, db: Session = Depends(get_db)):
     return new_stock
     
 @app.get("/stock")
-def get_stock(db: Session = Depends(get_db)):
-    rows = db.query(stock).order_by(stock.id.desc()).all()
+def get_stock(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    rows = db.query(stock).filter(stock.unique_id == current_uid).order_by(stock.id.desc()).all()
     return [_items_to_dict(r) for r in rows]
 
 def _log_to_dict(l):
@@ -1194,10 +1266,10 @@ def _log_to_dict(l):
     }
 
 @app.post("/notification-log")
-def add_log(payload: NotificationLogSchema, db: Session = Depends(get_db)):
+def add_log(payload: NotificationLogSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     new_log = notificationLogs(
+        unique_id = current_uid,
         detail = payload.detail
-        
     )
     db.add(new_log)
     try:
@@ -1277,7 +1349,7 @@ def gen_invoice(payload: InvoiceGenerationSchema):
 
 
 @app.post("/sync-invoice-stock")
-def sync_invoice_stock(payload: InvoiceSyncSchema, db: Session = Depends(get_db)):
+def sync_invoice_stock(payload: InvoiceSyncSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     """
     Deduct (revert=False) or restore (revert=True) stock and godown quantities
     based on the items listed in an invoice. Each item specifies an exact godown.
@@ -1291,8 +1363,8 @@ def sync_invoice_stock(payload: InvoiceSyncSchema, db: Session = Depends(get_db)
         if not item_name:
             continue
 
-        # Case-insensitive stock lookup
-        stock_row = db.query(stock).filter(func.lower(stock.item) == item_name.lower()).first()
+        # Case-insensitive stock lookup scoped to current_uid
+        stock_row = db.query(stock).filter(func.lower(stock.item) == item_name.lower(), stock.unique_id == current_uid).first()
         if not stock_row:
             warnings_list.append(f"Stock item '{item_name}' not found – skipped.")
             continue
@@ -1320,8 +1392,8 @@ def sync_invoice_stock(payload: InvoiceSyncSchema, db: Session = Depends(get_db)
                 current_godowns[target_key] = max(0, current_godowns.get(target_key, 0) - qty)
             stock_row.godowns = current_godowns
 
-            # Sync the godown table record (items list inside each godown)
-            gd_row = db.query(godown).filter(func.lower(godown.godown_name) == godown_name.lower()).first()
+            # Sync the godown table record (items list inside each godown) scoped by current_uid
+            gd_row = db.query(godown).filter(func.lower(godown.godown_name) == godown_name.lower(), godown.unique_id == current_uid).first()
             if gd_row:
                 items_list = list(gd_row.items or [])
                 updated    = False
@@ -1396,7 +1468,7 @@ def reset_whatsapp_session(payload: WhatsAppResetSessionSchema):
     return {"message": f"Session for wa_id '{payload.wa_id}' reset to MAIN_MENU"}
 
 @app.post("/invoices/ingest")
-def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(get_db)):
+def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     """Accepts file/file_key + business_id/user_id + source=whatsapp, performs OCR extraction, and creates voucher records."""
     file_key = payload.file_key or f"whatsapp/ingest_{uuid.uuid4()}.pdf"
     
@@ -1460,6 +1532,7 @@ def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(g
     items = report.get("items") or []
 
     pv = PendingVouchers(
+        unique_id=current_uid,
         voucher_type=voucher_type,
         voucher_no=voucher_no,
         date=date_val,
@@ -1474,6 +1547,7 @@ def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(g
     db.add(pv)
 
     vch = Vouchers(
+        unique_id=current_uid,
         voucher_type=voucher_type,
         date=date_val,
         voucher_no=voucher_no,
@@ -1506,10 +1580,10 @@ def ingest_invoice(payload: WhatsAppIngestInvoiceSchema, db: Session = Depends(g
     }
 
 @app.get("/invoices/batch-status/{batch_id}")
-def get_batch_status(batch_id: str, db: Session = Depends(get_db)):
+def get_batch_status(batch_id: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     """Poll/aggregate batch processing results for summary message."""
     pattern = f"%{batch_id}%"
-    pending_items = db.query(PendingVouchers).filter(PendingVouchers.file_key.like(pattern)).all()
+    pending_items = db.query(PendingVouchers).filter(PendingVouchers.file_key.like(pattern), PendingVouchers.unique_id == current_uid).all()
     total_received = len(pending_items)
     processed_count = sum(1 for item in pending_items if item.status == "accepted")
     rejected_count = sum(1 for item in pending_items if item.status == "rejected")
@@ -1525,18 +1599,18 @@ def get_batch_status(batch_id: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/reports/generate")
-def generate_report_endpoint(payload: ReportGenerateSchema, db: Session = Depends(get_db)):
+def generate_report_endpoint(payload: ReportGenerateSchema, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
     """{business_id/user_id, report_type, period} -> returns report file & summary."""
     user_id = payload.user_id or payload.business_id or 1
     report_type = payload.report_type.strip()
     period = payload.period.strip()
 
     if report_type.lower() == "inventory":
-        file_path, text_digest = generate_inventory_report(db, user_id, period)
+        file_path, text_digest = generate_inventory_report(db, user_id, period, unique_id=current_uid)
     elif report_type.lower() == "reconciliation":
-        file_path, text_digest = generate_reconciliation_report(db, user_id, period)
+        file_path, text_digest = generate_reconciliation_report(db, user_id, period, unique_id=current_uid)
     elif report_type.lower() == "summary":
-        file_path, text_digest = generate_summary_report(db, user_id, period)
+        file_path, text_digest = generate_summary_report(db, user_id, period, unique_id=current_uid)
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported report_type '{report_type}'")
 
@@ -1566,6 +1640,7 @@ def get_whatsapp_account(wa_id: str, db: Session = Depends(get_db)):
         "linked": True,
         "user_id": acc.user_id,
         "business_id": acc.user_id,
+        "unique_id": acc.unique_id or (user.unique_id if user else None),
         "status": acc.status,
         "verified_at": acc.verified_at,
         "user": {
@@ -1582,11 +1657,16 @@ def link_whatsapp_account(payload: WhatsAppLinkSchema, db: Session = Depends(get
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if not user.unique_id:
+        user.unique_id = str(uuid.uuid4())
+        db.commit()
+
     acc = db.query(WhatsAppAccount).filter(WhatsAppAccount.wa_id == payload.wa_id).first()
     if not acc:
         acc = WhatsAppAccount(
             wa_id=payload.wa_id,
             user_id=payload.user_id,
+            unique_id=user.unique_id,
             mobile=payload.mobile or user.mobile,
             status="active",
             verified_at=datetime.utcnow()
@@ -1594,6 +1674,7 @@ def link_whatsapp_account(payload: WhatsAppLinkSchema, db: Session = Depends(get
         db.add(acc)
     else:
         acc.user_id = payload.user_id
+        acc.unique_id = user.unique_id
         acc.mobile = payload.mobile or user.mobile
         acc.status = "active"
         acc.verified_at = datetime.utcnow()
@@ -1609,6 +1690,7 @@ def link_whatsapp_account(payload: WhatsAppLinkSchema, db: Session = Depends(get
         "message": f"WhatsApp account {payload.wa_id} successfully linked to user {user.email}",
         "wa_id": acc.wa_id,
         "user_id": acc.user_id,
+        "unique_id": acc.unique_id,
         "status": acc.status
     }
 

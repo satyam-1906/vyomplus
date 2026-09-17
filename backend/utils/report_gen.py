@@ -32,14 +32,20 @@ def _horiz_rule(c, x1, x2, y, color=BORDER):
     c.line(x1, y, x2, y)
     c.setStrokeColor(DARK)
 
-def generate_inventory_report(db: Session, user_id: int, period: str) -> tuple[str, str]:
+def generate_inventory_report(db: Session, user_id: int, period: str, unique_id: Optional[str] = None) -> tuple[str, str]:
     """Generates Inventory report PDF and returns (file_path, text_digest)."""
     now_str = datetime.utcnow().strftime("%d-%b-%Y %H:%M UTC")
     filename = f"Inventory_Report_{period}_{int(datetime.utcnow().timestamp())}.pdf"
     file_path = os.path.normpath(os.path.join(_REPORTS_DIR, filename))
 
-    stock_items = db.query(stock).all()
-    godowns = db.query(godown).all()
+    stock_q = db.query(stock)
+    godown_q = db.query(godown)
+    if unique_id:
+        stock_q = stock_q.filter(stock.unique_id == unique_id)
+        godown_q = godown_q.filter(godown.unique_id == unique_id)
+
+    stock_items = stock_q.all()
+    godowns = godown_q.all()
 
     total_items = len(stock_items)
     total_qty = sum(item.quantity for item in stock_items)
@@ -106,14 +112,20 @@ def generate_inventory_report(db: Session, user_id: int, period: str) -> tuple[s
 
     return file_path, text_digest
 
-def generate_reconciliation_report(db: Session, user_id: int, period: str) -> tuple[str, str]:
+def generate_reconciliation_report(db: Session, user_id: int, period: str, unique_id: Optional[str] = None) -> tuple[str, str]:
     """Generates Reconciliation report PDF and returns (file_path, text_digest)."""
     now_str = datetime.utcnow().strftime("%d-%b-%Y %H:%M UTC")
     filename = f"Reconciliation_Report_{period}_{int(datetime.utcnow().timestamp())}.pdf"
     file_path = os.path.normpath(os.path.join(_REPORTS_DIR, filename))
 
-    statements = db.query(BankStatements).all()
-    brs_records = db.query(BRS).all()
+    stmt_q = db.query(BankStatements)
+    brs_q = db.query(BRS)
+    if unique_id:
+        stmt_q = stmt_q.filter(BankStatements.unique_id == unique_id)
+        brs_q = brs_q.filter(BRS.unique_id == unique_id)
+
+    statements = stmt_q.all()
+    brs_records = brs_q.all()
 
     total_statements = len(statements)
     reconciled_count = sum(1 for s in statements if (s.reconciliation_status or '').lower() in ['reconciled', 'matched', 'completed'])
@@ -183,16 +195,27 @@ def generate_reconciliation_report(db: Session, user_id: int, period: str) -> tu
 
     return file_path, text_digest
 
-def generate_summary_report(db: Session, user_id: int, period: str) -> tuple[str, str]:
+def generate_summary_report(db: Session, user_id: int, period: str, unique_id: Optional[str] = None) -> tuple[str, str]:
     """Generates Summary report PDF and returns (file_path, text_digest)."""
     now_str = datetime.utcnow().strftime("%d-%b-%Y %H:%M UTC")
     filename = f"Summary_Report_{period}_{int(datetime.utcnow().timestamp())}.pdf"
     file_path = os.path.normpath(os.path.join(_REPORTS_DIR, filename))
 
-    vouchers = db.query(Vouchers).all()
-    pending_vch = db.query(PendingVouchers).filter(PendingVouchers.status == 'pending').count()
-    statements = db.query(BankStatements).all()
-    stock_items = db.query(stock).all()
+    vch_q = db.query(Vouchers)
+    pv_q = db.query(PendingVouchers).filter(PendingVouchers.status == 'pending')
+    stmt_q = db.query(BankStatements)
+    stock_q = db.query(stock)
+
+    if unique_id:
+        vch_q = vch_q.filter(Vouchers.unique_id == unique_id)
+        pv_q = pv_q.filter(PendingVouchers.unique_id == unique_id)
+        stmt_q = stmt_q.filter(BankStatements.unique_id == unique_id)
+        stock_q = stock_q.filter(stock.unique_id == unique_id)
+
+    vouchers = vch_q.all()
+    pending_vch = pv_q.count()
+    statements = stmt_q.all()
+    stock_items = stock_q.all()
 
     total_vouchers = len(vouchers)
     total_sales = sum(v.amount for v in vouchers if (v.voucher_type or '').lower() == 'sales')

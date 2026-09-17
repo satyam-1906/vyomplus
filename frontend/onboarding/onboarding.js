@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let currentStep = 1;
     const totalSteps = 7;
     const stepsData = {};
+    const API_BASE = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1") ? "" : "https://vyomplus.onrender.com";
 
     // Elements
     const panes = document.querySelectorAll(".onboarding-step-pane");
@@ -13,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Fetch initial user status & pre-populate Step 1
     try {
-        const response = await fetch("https://vyomplus.onrender.com/onboarding/status", {
+        const response = await fetch(`${API_BASE}/onboarding/status`, {
             credentials: "include",
             headers: {
                 "Authorization": `Bearer ${getCookie("session_token") || ""}`
@@ -24,13 +25,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.getElementById("fullName").value = data.full_name || "";
             document.getElementById("email").value = data.email || "";
             document.getElementById("mobile").value = data.mobile || "";
-        } else {
-            // Redirect to login if unauthenticated
+        } else if (response.status === 401) {
             window.location.href = "../loginNAuth/login.html";
         }
     } catch (e) {
         console.error("Failed to load onboarding status", e);
     }
+
+    // Enable sidebar step clicking
+    progressItems.forEach((item, index) => {
+        item.style.cursor = "pointer";
+        item.addEventListener("click", () => {
+            const stepNum = index + 1;
+            saveStepData(currentStep);
+            currentStep = stepNum;
+            showStep(currentStep);
+        });
+    });
 
     // Step Nav logic
     nextBtn.addEventListener("click", () => {
@@ -51,37 +62,62 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("onboardingForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        if (!validateStep(7)) return;
-        saveStepData(7);
+        saveStepData(currentStep);
 
-        // Compile payload
-        const payload = {
-            entity_type: stepsData[2]?.entityType,
-            legal_name: stepsData[2]?.legalName,
-            trade_name: stepsData[2]?.tradeName,
-            display_name: stepsData[2]?.displayName,
-            date_incorporation: stepsData[2]?.dateIncorporation,
-            nature_business: stepsData[2]?.natureBusiness,
-            email: stepsData[3]?.bizEmail,
-            phone: stepsData[3]?.bizPhone,
-            website: stepsData[3]?.bizWebsite,
-            employee_count: stepsData[3]?.employeeCount ? parseInt(stepsData[3].employeeCount) : null,
-            expected_turnover: stepsData[3]?.annualTurnover,
-            pan: stepsData[4]?.pan,
-            pan_holder_name: stepsData[4]?.panHolderName,
-            tan: stepsData[4]?.tan,
-            tax_jurisdiction: stepsData[4]?.taxJurisdiction,
-            gstin: stepsData[5]?.gstin,
-            gst_status: stepsData[5]?.gstStatus,
-            gst_reg_date: stepsData[5]?.gstRegDate,
-            financial_year: `${stepsData[6]?.fyFrom || "April"}-${stepsData[6]?.fyTo || "March"}`,
-            accounting_start: stepsData[6]?.accountingStart,
-            currency: stepsData[6]?.currencyValue || "INR",
-            timezone: stepsData[6]?.timezoneValue || "Asia/Kolkata"
+        // Check if any previous step has unfulfilled required fields
+        for (let s = 1; s <= totalSteps; s++) {
+            if (!validateStep(s)) {
+                currentStep = s;
+                showStep(s);
+                showToast(`Please fill out required fields on Step ${s}`, "error");
+                return;
+            }
+        }
+
+        const val = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value.trim() : "";
+        };
+        const chk = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.checked : false;
         };
 
+        // Compile payload directly from DOM values
+        const payload = {
+            entity_type: val("entityType"),
+            legal_name: val("legalName"),
+            trade_name: val("tradeName"),
+            display_name: val("displayName"),
+            date_incorporation: val("dateIncorporation"),
+            nature_business: val("natureBusiness"),
+            email: val("bizEmail") || val("email"),
+            phone: val("bizPhone") || val("mobile"),
+            website: val("bizWebsite"),
+            employee_count: val("employeeCount") ? parseInt(val("employeeCount")) : null,
+            expected_turnover: val("annualTurnover"),
+            pan: val("pan"),
+            pan_holder_name: val("panHolderName"),
+            tan: val("tan"),
+            tax_jurisdiction: val("taxJurisdiction"),
+            gstin: val("gstin"),
+            gst_status: val("gstStatus"),
+            gst_reg_date: val("gstRegDate"),
+            financial_year: `${val("fyFrom") || "April"}-${val("fyTo") || "March"}`,
+            accounting_start: val("accountingStart"),
+            currency: val("currencyValue") || "INR",
+            timezone: val("timezoneValue") || "Asia/Kolkata",
+            two_fa_enabled: chk("twoFaEnabled"),
+            two_fa_method: val("twoFaMethod") || "Email",
+            transaction_pin: val("transactionPin") || null,
+            recovery_email: val("recoveryEmail") || null
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `Completing... <i class="ti ti-loader rotate"></i>`;
+
         try {
-            const resp = await fetch("https://vyomplus.onrender.com/onboarding/complete", {
+            const resp = await fetch(`${API_BASE}/onboarding/complete`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -95,18 +131,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (resp.ok) {
                 showToast("🎉 Welcome to VyomPlus! Redirecting to your dashboard…", "success");
             } else {
-                showToast("Profile saved locally. Redirecting to dashboard…", "info");
+                showToast("Profile saved. Redirecting to dashboard…", "info");
             }
         } catch (err) {
-            // Backend unreachable — still proceed to console
             localStorage.setItem("onboarding_complete", "true");
             showToast("Redirecting to your dashboard…", "info");
         }
 
-        // Always redirect after a brief moment so the toast is visible
         setTimeout(() => {
             window.location.href = "../console/overview/overview.html";
-        }, 1400);
+        }, 1200);
     });
 
     function showStep(step) {
@@ -334,33 +368,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 });
 
-// Dynamic Mandala background animation
-document.addEventListener("DOMContentLoaded", () => {
-    const canvas = document.getElementById("bg-canvas");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
 
-    let w = canvas.width = window.innerWidth;
-    let h = canvas.height = window.innerHeight;
-
-    window.addEventListener("resize", () => {
-        w = canvas.width = window.innerWidth;
-        h = canvas.height = window.innerHeight;
-    });
-
-    let angle = 0;
-    function animate() {
-        ctx.clearRect(0, 0, w, h);
-        const style = getComputedStyle(document.documentElement);
-        const bg1 = style.getPropertyValue('--color-canvas-bg-1').trim() || '#0c152b';
-        const bg2 = style.getPropertyValue('--color-canvas-bg-2').trim() || '#060913';
-
-        let gradient = ctx.createRadialGradient(w/2, h/2, 50, w/2, h/2, Math.max(w, h));
-        gradient.addColorStop(0, bg1);
-        gradient.addColorStop(1, bg2);
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, w, h);
-        requestAnimationFrame(animate);
-    }
-    animate();
-});

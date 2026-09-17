@@ -26,6 +26,10 @@
     --color-warning: #f59e0b;
     --color-error: #ef4444;
 
+    /* Canvas Background (matches main design system) */
+    --color-canvas-bg-1: #0a2119;
+    --color-canvas-bg-2: #06140f;
+
     --border-radius-sm: 8px;
     --border-radius-md: 12px;
     --border-radius-lg: 20px;
@@ -49,6 +53,9 @@ html.light-mode {
     --color-primary-btn-text: #ebf9f4;
     --color-secondary: #12544f;
     --color-accent: #2a8360;
+
+    --color-canvas-bg-1: #e2f6ee;
+    --color-canvas-bg-2: #ebf9f4;
 
     --shadow-depth: 0 10px 30px -5px rgba(9, 36, 42, 0.08);
     --shadow-hover: 0 20px 40px -10px rgba(42, 131, 96, 0.15);

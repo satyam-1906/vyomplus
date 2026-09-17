@@ -69,6 +69,12 @@ class BusinessProfileSchema(BaseModel):
     gst_status: Optional[str] = None
     gst_reg_date: Optional[str] = None
     gst_effective_date: Optional[str] = None
+    
+    # Security Settings (User Table mapping)
+    two_fa_enabled: Optional[bool] = False
+    two_fa_method: Optional[str] = "Email"
+    transaction_pin: Optional[str] = None
+    recovery_email: Optional[str] = None
 
 
 class ItemSchema(BaseModel):

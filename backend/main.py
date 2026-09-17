@@ -284,12 +284,21 @@ def complete_onboarding(payload: BusinessProfileSchema, db: Session = Depends(ge
     # Save/update business profile
     profile = db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
     if not profile:
-        profile = BusinessProfile(user_id=user.id)
+        profile = BusinessProfile(user_id=user.id, unique_id=user.unique_id)
         db.add(profile)
+    else:
+        profile.unique_id = user.unique_id
     
-    # Map fields
-    for field, val in payload.dict(exclude_unset=True).items():
-        setattr(profile, field, val)
+    # Map profile fields
+    data = payload.dict(exclude_unset=True)
+    user_fields = {"two_fa_enabled", "two_fa_method", "transaction_pin", "recovery_email"}
+    
+    for field, val in data.items():
+        if field in user_fields:
+            if hasattr(user, field):
+                setattr(user, field, val)
+        elif hasattr(profile, field):
+            setattr(profile, field, val)
         
     user.onboarding_complete = True
     user.account_status = "active"
@@ -299,6 +308,7 @@ def complete_onboarding(payload: BusinessProfileSchema, db: Session = Depends(ge
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     return {"message": "Onboarding completed successfully"}
+
 
 @app.get("/profile/details")
 def get_profile_details(db: Session = Depends(get_db), user: Users = Depends(get_current_user_from_token)):

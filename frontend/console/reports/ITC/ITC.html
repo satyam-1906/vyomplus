@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Input Tax Credit (ITC) – VYOM+</title>
+    <title>Input Tax Credit (ITC) â€“ VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,8 +48,8 @@
         </div>
         <div class="sidebar-footer">
             <a href="../../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
-                <div class="sidebar-user-info"><div class="sidebar-user-name">Jane Doe</div><div class="sidebar-user-role">CFO · Apex Retailers</div></div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
+                <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div><div class="sidebar-user-role" id="sidebar-user-role-text"></div></div>
             </a>
         </div>
     </nav>
@@ -77,7 +77,7 @@
                     <div style="width:48px; height:48px; background:rgba(37,99,235,0.12); border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ti ti-file-text" style="color:#2563EB; font-size:24px;"></i></div>
                     <div>
                         <div style="font-size:12px; color:var(--color-text-secondary); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Total Claimable ITC</div>
-                        <div id="stat-claimable" style="font-size:22px; font-weight:800; color:var(--color-text-primary);">₹0.00</div>
+                        <div id="stat-claimable" style="font-size:22px; font-weight:800; color:var(--color-text-primary);">â‚¹0.00</div>
                     </div>
                 </div>
 
@@ -85,7 +85,7 @@
                     <div style="width:48px; height:48px; background:rgba(16,185,129,0.12); border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ti ti-circle-check" style="color:#10B981; font-size:24px;"></i></div>
                     <div>
                         <div style="font-size:12px; color:var(--color-text-secondary); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Total Claimed ITC</div>
-                        <div id="stat-claimed" style="font-size:22px; font-weight:800; color:#10B981;">₹0.00</div>
+                        <div id="stat-claimed" style="font-size:22px; font-weight:800; color:#10B981;">â‚¹0.00</div>
                     </div>
                 </div>
 
@@ -93,7 +93,7 @@
                     <div style="width:48px; height:48px; background:rgba(245,158,11,0.12); border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ti ti-wallet" style="color:#F59E0B; font-size:24px;"></i></div>
                     <div>
                         <div style="font-size:12px; color:var(--color-text-secondary); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Total ITC Remaining</div>
-                        <div id="stat-remaining" style="font-size:22px; font-weight:800; color:#F59E0B;">₹0.00</div>
+                        <div id="stat-remaining" style="font-size:22px; font-weight:800; color:#F59E0B;">â‚¹0.00</div>
                     </div>
                 </div>
             </div>
@@ -141,7 +141,7 @@
     </div>
 </div>
 <script src="../../shared/theme.js"></script>
-<script src="../../shared/sidebar.js"></script>
+<script src="../../shared/user-cache.js"></script><script src="../../shared/sidebar.js"></script>
 <script src="../../shared/notifications.js"></script>
 <script src="./ITC.js"></script>
 </body>

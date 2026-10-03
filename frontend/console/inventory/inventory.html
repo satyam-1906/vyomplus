@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -337,10 +337,10 @@ tbody tr:hover{background:var(--color-bg-card);}
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">Jane Doe</div>
-                    <div class="sidebar-user-role">CFO &middot; Apex Retailers</div>
+                    <div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div>
+                    <div class="sidebar-user-role" id="sidebar-user-role-text"></div>
                 </div>
             </a>
         </div>
@@ -834,7 +834,7 @@ tbody tr:hover{background:var(--color-bg-card);}
 
 <script src="../shared/theme.js"></script>
 <script src="../shared/canvas.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script src="inventory.js"></script>
 </body>

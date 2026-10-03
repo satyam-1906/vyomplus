@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Overview – VYOM+</title>
+    <title>Overview â€“ VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -125,10 +125,10 @@
         <!-- User Footer -->
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">Jane Doe</div>
-                    <div class="sidebar-user-role">CFO · Apex Retailers</div>
+                    <div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div>
+                    <div class="sidebar-user-role" id="sidebar-user-role-text"></div>
                 </div>
             </a>
         </div>
@@ -181,15 +181,15 @@
                                 <span class="badge success-badge">+12.4% MoM</span>
                             </div>
                             <div class="card-body">
-                                <div class="net-pl-value success-text">₹4,82,450</div>
+                                <div class="net-pl-value success-text">â‚¹4,82,450</div>
                                 <div class="pl-breakdown">
                                     <div class="breakdown-item">
                                         <span class="label">Total Sales (Revenue)</span>
-                                        <span class="value">₹12,40,000</span>
+                                        <span class="value">â‚¹12,40,000</span>
                                     </div>
                                     <div class="breakdown-item">
                                         <span class="label">Total Expense (Purchases)</span>
-                                        <span class="value">₹7,57,550</span>
+                                        <span class="value">â‚¹7,57,550</span>
                                     </div>
                                 </div>
                                 <div class="progress-bar-container">
@@ -215,21 +215,21 @@
                                 <div class="gst-summary-grid">
                                     <div class="gst-stat-box">
                                         <span class="stat-label">Input Tax Credit (ITC)</span>
-                                        <span class="stat-value text-emerald">₹1,14,350</span>
+                                        <span class="stat-value text-emerald">â‚¹1,14,350</span>
                                     </div>
                                     <div class="gst-stat-box">
                                         <span class="stat-label">Tax Liability (Output)</span>
-                                        <span class="stat-value text-blue">₹1,42,800</span>
+                                        <span class="stat-value text-blue">â‚¹1,42,800</span>
                                     </div>
                                     <div class="gst-stat-box full-width highlight">
                                         <span class="stat-label">Net GST Payable</span>
-                                        <span class="stat-value text-warning">₹28,450</span>
+                                        <span class="stat-value text-warning">â‚¹28,450</span>
                                     </div>
                                 </div>
                                 <div class="gst-breakdown-mini">
-                                    <span><strong>CGST:</strong> ₹14,225</span>
-                                    <span><strong>SGST:</strong> ₹14,225</span>
-                                    <span><strong>IGST:</strong> ₹0</span>
+                                    <span><strong>CGST:</strong> â‚¹14,225</span>
+                                    <span><strong>SGST:</strong> â‚¹14,225</span>
+                                    <span><strong>IGST:</strong> â‚¹0</span>
                                 </div>
                             </div>
                         </div>
@@ -373,9 +373,9 @@
             <h3>Step 1: Reconcile Purchase Register with GSTR-2B</h3>
             <p class="step-description">Verify that the input tax credit claimed matches the details uploaded by your suppliers.</p>
             <div class="recon-summary-card">
-                <div class="recon-stat"><span class="lbl">Eligible ITC (GSTR-2B)</span><span class="val success-text">₹1,14,350</span></div>
-                <div class="recon-stat"><span class="lbl">Claimed in Books</span><span class="val">₹1,14,350</span></div>
-                <div class="recon-stat"><span class="lbl">Difference</span><span class="val zero-diff">₹0 (Perfect Match)</span></div>
+                <div class="recon-stat"><span class="lbl">Eligible ITC (GSTR-2B)</span><span class="val success-text">â‚¹1,14,350</span></div>
+                <div class="recon-stat"><span class="lbl">Claimed in Books</span><span class="val">â‚¹1,14,350</span></div>
+                <div class="recon-stat"><span class="lbl">Difference</span><span class="val zero-diff">â‚¹0 (Perfect Match)</span></div>
             </div>
             <div class="reconcile-actions">
                 <button class="btn secondary-btn" id="cancel-filing-btn-1">Cancel</button>
@@ -389,9 +389,9 @@
                 <table class="ledger-table">
                     <thead><tr><th>Tax Head</th><th>Liability (A)</th><th>ITC Offset (B)</th><th>Balance Payable (A-B)</th></tr></thead>
                     <tbody>
-                        <tr><td>CGST</td><td>₹71,400</td><td>₹57,175</td><td class="payable-cell">₹14,225</td></tr>
-                        <tr><td>SGST</td><td>₹71,400</td><td>₹57,175</td><td class="payable-cell">₹14,225</td></tr>
-                        <tr><td>IGST</td><td>₹0</td><td>₹0</td><td>₹0</td></tr>
+                        <tr><td>CGST</td><td>â‚¹71,400</td><td>â‚¹57,175</td><td class="payable-cell">â‚¹14,225</td></tr>
+                        <tr><td>SGST</td><td>â‚¹71,400</td><td>â‚¹57,175</td><td class="payable-cell">â‚¹14,225</td></tr>
+                        <tr><td>IGST</td><td>â‚¹0</td><td>â‚¹0</td><td>â‚¹0</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -437,7 +437,7 @@
             <div class="form-group"><label for="prod-name">Product Name</label><input type="text" id="prod-name" placeholder="e.g. Premium Office Desk" required></div>
             <div class="form-group"><label for="prod-sku">SKU Code</label><input type="text" id="prod-sku" placeholder="e.g. SKU-OFF-DSK-01" required></div>
             <div class="form-group"><label for="prod-qty">Quantity</label><input type="number" id="prod-qty" placeholder="100" min="0" required></div>
-            <div class="form-group"><label for="prod-price">Unit Price (₹)</label><input type="number" id="prod-price" placeholder="4500" min="0" required></div>
+            <div class="form-group"><label for="prod-price">Unit Price (â‚¹)</label><input type="number" id="prod-price" placeholder="4500" min="0" required></div>
             <div class="form-group">
                 <label for="prod-gst">GST Rate (%)</label>
                 <select id="prod-gst">
@@ -458,7 +458,7 @@
 <!-- Scripts -->
 <script src="../shared/theme.js"></script>
 <script src="../shared/canvas.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script src="app.js"></script>
 </body>

@@ -251,6 +251,27 @@ async function login() {
             
             localStorage.setItem('email', email);
             localStorage.setItem('onboarding_complete', data.onboarding_complete);
+
+            // Cache full profile for sidebar/profile pages
+            const profile = {
+                email: data.email,
+                username: data.username,
+                full_name: data.full_name,
+                mobile: data.mobile,
+                mobile_verified: data.mobile_verified,
+                two_fa_enabled: data.two_fa_enabled,
+                two_fa_method: data.two_fa_method,
+                recovery_email: data.recovery_email,
+                recovery_phone: data.recovery_phone,
+                account_status: data.account_status,
+                last_login: data.last_login,
+                communication_preferences: data.communication_preferences,
+                marketing_consent: data.marketing_consent,
+                onboarding_complete: data.onboarding_complete,
+                business: data.business || {}
+            };
+            localStorage.setItem('vyom_user_profile', JSON.stringify(profile));
+
             loginForm.reset();
             setTimeout(() => {
                 if (data.onboarding_complete) {
@@ -259,6 +280,7 @@ async function login() {
                     window.location.href = "../onboarding/onboarding.html";
                 }
             }, 1500);
+
         } else {
             alertBanner.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
             alertBanner.style.borderColor = 'var(--color-error)';

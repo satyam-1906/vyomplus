@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings – VYOM+</title>
+    <title>Settings â€“ VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,12 +27,11 @@
         .toggle input:checked + .toggle-slider:before { transform:translateX(20px); background:#2563EB; }
     </style>
     <!-- Theme: apply before paint to prevent flash -->
-    <script>
-        (function() {
-            var t = localStorage.getItem("gst_theme") || "dark";
-            if (t === "light") document.documentElement.classList.add("light-mode");
-        })();
-    </script>
+    <script>(function() {
+        var t = localStorage.getItem("gst_theme") || "dark";
+        if (t === "light") document.documentElement.classList.add("light-mode");
+    })();</script>
+    <script src="../shared/onboarding-guard.js"></script>
 </head>
 <body>
 <canvas id="bg-canvas"></canvas>
@@ -65,8 +64,8 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
-                <div class="sidebar-user-info"><div class="sidebar-user-name">Jane Doe</div><div class="sidebar-user-role">CFO · Apex Retailers</div></div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
+                <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div><div class="sidebar-user-role" id="sidebar-user-role-text"></div></div>
             </a>
         </div>
     </nav>
@@ -92,21 +91,21 @@
                             <div class="settings-icon" style="background:rgba(37,99,235,.1);"><i class="ti ti-mail" style="color:#2563EB;"></i></div>
                             <div><h4>Email Notifications</h4><p>Receive reports and alerts via email</p></div>
                         </div>
-                        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                        <label class="toggle"><input type="checkbox" id="pref-email"><span class="toggle-slider"></span></label>
                     </div>
                     <div class="settings-row">
                         <div class="settings-row-left">
                             <div class="settings-icon" style="background:rgba(16,185,129,.1);"><i class="ti ti-bell-ringing" style="color:#10B981;"></i></div>
                             <div><h4>GST Filing Reminders</h4><p>Alert before due dates (7 days, 3 days, 1 day)</p></div>
                         </div>
-                        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                        <label class="toggle"><input type="checkbox" id="pref-sms"><span class="toggle-slider"></span></label>
                     </div>
                     <div class="settings-row">
                         <div class="settings-row-left">
                             <div class="settings-icon" style="background:rgba(245,158,11,.1);"><i class="ti ti-packages" style="color:#F59E0B;"></i></div>
                             <div><h4>Inventory Alerts</h4><p>Low stock and out-of-stock notifications</p></div>
                         </div>
-                        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                        <label class="toggle"><input type="checkbox" id="pref-whatsapp"><span class="toggle-slider"></span></label>
                     </div>
                     <div class="settings-row">
                         <div class="settings-row-left">
@@ -144,7 +143,37 @@
     </div>
 </div>
 <script src="../shared/theme.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
+<script>
+(function() {
+    var p = window.VyomUser ? window.VyomUser.get() : null;
+    var prefs = (p && p.communication_preferences) ? p.communication_preferences : { email: true, sms: false, whatsapp: false };
+    var emailToggle = document.getElementById('pref-email');
+    var smsToggle   = document.getElementById('pref-sms');
+    var waToggle    = document.getElementById('pref-whatsapp');
+    if (emailToggle) emailToggle.checked = !!prefs.email;
+    if (smsToggle)   smsToggle.checked   = !!prefs.sms;
+    if (waToggle)    waToggle.checked    = !!prefs.whatsapp;
+
+    var API = 'https://vyomplus.onrender.com';
+    function getToken() { var m = document.cookie.match(/session_token=([^;]+)/); return m ? m[1] : ''; }
+    function savePref(key, val) {
+        var payload = {}; payload[key] = val;
+        fetch(API + '/profile/communication-prefs', {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+            body: JSON.stringify(payload)
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (window.VyomUser && d.communication_preferences) {
+                window.VyomUser.set({ communication_preferences: d.communication_preferences });
+            }
+        }).catch(function(){});
+    }
+    if (emailToggle) emailToggle.addEventListener('change', function() { savePref('email', this.checked); });
+    if (smsToggle)   smsToggle.addEventListener('change',   function() { savePref('sms',   this.checked); });
+    if (waToggle)    waToggle.addEventListener('change',    function() { savePref('whatsapp', this.checked); });
+})();
+</script>
 </body>
 </html>

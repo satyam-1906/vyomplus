@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vouchers â€“ VYOM+</title>
+    <title>Vouchers Ã¢â‚¬â€œ VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,7 +35,7 @@
         }
         .modal-card {
             background: var(--color-bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
             width: 540px;
@@ -412,10 +412,10 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">Jane Doe</div>
-                    <div class="sidebar-user-role">CFO Â· Apex Retailers</div>
+                    <div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div>
+                    <div class="sidebar-user-role" id="sidebar-user-role-text"></div>
                 </div>
             </a>
         </div>
@@ -624,7 +624,7 @@
 </div>
 
 <script src="../shared/theme.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script src="vouchers.js"></script>
 </body>

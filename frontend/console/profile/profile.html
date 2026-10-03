@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile – VYOM+</title>
+    <title>My Profile Ã¢â‚¬â€œ VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,8 +63,8 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
-                <div class="sidebar-user-info"><div class="sidebar-user-name">Jane Doe</div><div class="sidebar-user-role">CFO · Apex Retailers</div></div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
+                <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div><div class="sidebar-user-role" id="sidebar-user-role-text"></div></div>
             </a>
         </div>
     </nav>
@@ -81,12 +81,12 @@
         <div class="console-content">
             <!-- Hero -->
             <div class="profile-hero">
-                <div class="profile-avatar-xl">JD</div>
+                <div class="profile-avatar-xl" id="profile-avatar-xl">?</div>
                 <div class="profile-info">
-                    <h2>Jane Doe</h2>
-                    <p>Chief Financial Officer · Apex Retailers Private Limited</p>
-                    <p style="margin-top:4px;color:var(--color-text-muted);font-size:13px;">jane.doe@apexretailers.in &nbsp;·&nbsp; GSTIN: 27AAAAA1111A1Z1</p>
-                    <div class="profile-badge-inline"><i class="ti ti-shield-check"></i> Authorized Signatory</div>
+                    <h2 id="profile-hero-name">Loading...</h2>
+                    <p id="profile-hero-role"></p>
+                    <p id="profile-hero-email" style="margin-top:4px;color:var(--color-text-muted);font-size:13px;"></p>
+                    <div class="profile-badge-inline"><i class="ti ti-shield-check"></i> <span id="profile-hero-status">Active Account</span></div>
                 </div>
             </div>
 
@@ -127,7 +127,7 @@
                         <p>Manage authorized signatories</p>
                     </div>
                 </a>
-                <a href="#" class="profile-menu-card" onclick="if(confirm('Are you sure you want to log out?')) window.location.href='../../loginNAuth/login.html'">
+                <a href="#" class="profile-menu-card" id="logout-btn" onclick="confirmLogout()">
                     <div class="profile-menu-icon" style="background:rgba(100,116,139,.1);"><i class="ti ti-logout" style="color:var(--color-text-muted);"></i></div>
                     <div class="profile-menu-text">
                         <h4>Log Out</h4>
@@ -139,7 +139,40 @@
     </div>
 </div>
 <script src="../shared/theme.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
+<script>
+(function() {
+    var p = window.VyomUser ? window.VyomUser.get() : null;
+    if (!p) return;
+    var initials = window.VyomUser.getInitials();
+    var name = window.VyomUser.getDisplayName();
+    var biz = p.business || {};
+    var bizName = biz.display_name || biz.trade_name || biz.legal_name || 'Business Profile';
+    var email = p.email || '';
+    var gstin = biz.gstin || '';
+
+    var avatarXl = document.getElementById('profile-avatar-xl');
+    if (avatarXl) avatarXl.textContent = initials;
+
+    var heroName = document.getElementById('profile-hero-name');
+    if (heroName) heroName.textContent = name;
+
+    var heroRole = document.getElementById('profile-hero-role');
+    if (heroRole) heroRole.textContent = bizName;
+
+    var heroEmail = document.getElementById('profile-hero-email');
+    if (heroEmail) heroEmail.textContent = email + (gstin ? ' \u00b7 GSTIN: ' + gstin : '');
+
+    var statusEl = document.getElementById('profile-hero-status');
+    if (statusEl) statusEl.textContent = p.account_status === 'active' ? 'Active Account' : (p.account_status || 'Active Account');
+})();
+
+function confirmLogout() {
+    if (confirm('Are you sure you want to log out?')) {
+        if (window.VyomUser) window.VyomUser.logout();
+    }
+}
+</script>
 </body>
 </html>

@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bank Statements – VYOM+</title>
+    <title>Bank Statements â€“ VYOM+</title>
     <meta name="description" content="Manage and track your bank account statements, transactions, and reconciliation status in one place.">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -87,27 +87,27 @@
         .form-group input,
         .form-group select,
         .form-group textarea {
-            background: rgba(15,23,42,0.8);
-            border: 1px solid rgba(255,255,255,0.09);
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
             border-radius: 8px; padding: 8px 12px; font-size: 13px; color: var(--color-text-primary);
             outline: none; transition: border-color 0.2s, box-shadow 0.2s;
-            font-family: 'Inter', sans-serif;
+            font-family: inherit;
         }
         .form-group textarea { resize: vertical; min-height: 60px; }
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
-            border-color: #38bdf8;
-            box-shadow: 0 0 0 2px rgba(56,189,248,0.18);
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 2px rgba(124, 213, 177, 0.18);
         }
         .form-group input::placeholder,
         .form-group textarea::placeholder { color: var(--color-text-muted); }
-        .form-group select option { background: #1e293b; }
+        .form-group select option { background: var(--color-bg-card); color: var(--color-text-primary); }
 
         .ocr-drop-area {
-            border: 2px dashed rgba(255,255,255,0.12); border-radius: 10px;
+            border: 2px dashed var(--color-border); border-radius: 10px;
             padding: 16px 14px; text-align: center; cursor: pointer;
-            transition: all 0.2s ease; background: rgba(15,23,42,0.4);
+            transition: all 0.2s ease; background: var(--color-bg-surface);
             display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative;
         }
         .ocr-drop-area:hover, .ocr-drop-area.dragover {
@@ -258,10 +258,10 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">Jane Doe</div>
-                    <div class="sidebar-user-role">CFO &middot; Apex Retailers</div>
+                    <div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div>
+                    <div class="sidebar-user-role" id="sidebar-user-role-text"></div>
                 </div>
             </a>
         </div>
@@ -366,9 +366,9 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      NEW BANK STATEMENT MODAL
-═══════════════════════════════════════════════════════ -->
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="modal-overlay" id="new-statement-modal">
     <div class="modal-card">
         <div class="modal-header">
@@ -410,7 +410,7 @@
 
                     <div class="form-group">
                         <label for="bs-description">Description / Narration</label>
-                        <textarea id="bs-description" placeholder="e.g. NEFT transfer – Zenith Tech Labs, INV-2026-089" data-required="true" required></textarea>
+                        <textarea id="bs-description" placeholder="e.g. NEFT transfer â€“ Zenith Tech Labs, INV-2026-089" data-required="true" required></textarea>
                     </div>
 
                     <div class="form-row-2">
@@ -520,7 +520,7 @@
 </div>
 
 <script src="../shared/theme.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script src="bank-statements.js"></script>
 </body>

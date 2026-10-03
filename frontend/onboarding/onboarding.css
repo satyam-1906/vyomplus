@@ -398,3 +398,36 @@ button:disabled {
         grid-template-columns: 1fr;
     }
 }
+
+@media (max-width: 600px) {
+    .sidebar-steps {
+        padding: 20px 16px;
+        gap: 20px;
+    }
+
+    .steps-progress-list {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        gap: 12px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .step-progress-item {
+        flex-shrink: 0;
+    }
+
+    .content-panel {
+        padding: 20px 14px;
+    }
+
+    .navigation-buttons {
+        flex-direction: column-reverse;
+        gap: 10px;
+    }
+
+    .onboarding-btn {
+        width: 100%;
+    }
+}

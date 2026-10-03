@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security & Password – VYOM+</title>
+    <title>Security &amp; Password - VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,19 +25,19 @@
         .form-section { display:flex; flex-direction:column; gap:20px; }
         .form-group { display:flex; flex-direction:column; gap:8px; }
         .form-label { font-size:12px; font-weight:600; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:.04em; }
-        .form-input { background:rgba(15,23,42,.8); border:1px solid var(--color-border); border-radius:10px; padding:12px 16px; font-size:14px; color:var(--color-text-primary); font-family:'Inter',sans-serif; outline:none; transition:border-color .2s; }
+        .form-input { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:10px; padding:12px 16px; font-size:14px; color:var(--color-text-primary); font-family:inherit; outline:none; transition:border-color .2s; }
         .form-input:focus { border-color:rgba(37,99,235,.5); box-shadow:0 0 0 3px rgba(37,99,235,.08); }
         .form-actions { display:flex; justify-content:flex-end; margin-top:8px; }
-        .btn-save { background:#2563EB; color:white; border:none; border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; }
+        .btn-save { background:#2563EB; color:white; border:none; border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; }
         .btn-save:hover { background:#1D4ED8; }
+        .btn-save:disabled { opacity:.6; cursor:not-allowed; }
+        .form-alert { border-radius:10px; padding:12px 16px; font-size:13px; font-weight:500; display:none; margin-bottom:12px; }
+        .form-alert.success { background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); color:#10B981; }
+        .form-alert.error { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#EF4444; }
+        @keyframes spin { to { transform:rotate(360deg); } }
     </style>
-    <!-- Theme: apply before paint to prevent flash -->
-    <script>
-        (function() {
-            var t = localStorage.getItem("gst_theme") || "dark";
-            if (t === "light") document.documentElement.classList.add("light-mode");
-        })();
-    </script>
+    <script>(function() { var t = localStorage.getItem("gst_theme") || "dark"; if (t === "light") document.documentElement.classList.add("light-mode"); })();</script>
+    <script src="../shared/onboarding-guard.js"></script>
 </head>
 <body>
 <canvas id="bg-canvas"></canvas>
@@ -69,13 +69,12 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
-                <div class="sidebar-user-info"><div class="sidebar-user-name">Jane Doe</div><div class="sidebar-user-role">CFO · Apex Retailers</div></div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
+                <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div><div class="sidebar-user-role" id="sidebar-user-role-text"></div></div>
             </a>
         </div>
     </nav>
     <button class="sidebar-toggle" id="sidebar-toggle"><i class="ti ti-chevron-left"></i></button>
-
     <div class="console-main">
         <div class="console-topbar">
             <div class="topbar-left">
@@ -87,9 +86,7 @@
                 </div>
             </div>
         </div>
-
         <div class="console-content" style="max-width:800px;">
-
             <!-- Security Status -->
             <div class="glass-card">
                 <div class="glass-card-header">
@@ -101,68 +98,143 @@
                             <div class="sec-icon" style="background:rgba(16,185,129,.1);"><i class="ti ti-device-mobile" style="color:#10B981;"></i></div>
                             <div>
                                 <h4>Two-Factor Authentication (2FA)</h4>
-                                <p>Verify identity via OTP on login</p>
+                                <p>Verify identity via OTP on login &nbsp;<span id="tfa-method-label" style="opacity:.7;font-size:11px;"></span></p>
                             </div>
                         </div>
                         <div style="display:flex;align-items:center;gap:12px;">
-                            <span class="sec-badge sec-enabled">Enabled</span>
-                            <button class="sec-toggle" style="background:rgba(255,255,255,.06);color:var(--color-text-secondary);border:1px solid var(--color-border);">Disable</button>
+                            <span class="sec-badge" id="tfa-badge">Disabled</span>
+                            <button class="sec-toggle" id="tfa-toggle-btn">Enable</button>
                         </div>
                     </div>
                     <div class="security-item">
                         <div class="security-item-left">
-                            <div class="sec-icon" style="background:rgba(37,99,235,.1);"><i class="ti ti-key" style="color:#2563EB;"></i></div>
+                            <div class="sec-icon" style="background:rgba(37,99,235,.1);"><i class="ti ti-mail" style="color:#2563EB;"></i></div>
                             <div>
-                                <h4>API Access Keys</h4>
-                                <p>Manage tokens for third-party integrations</p>
+                                <h4>Recovery Email</h4>
+                                <p id="recovery-email-label">Not set</p>
                             </div>
                         </div>
-                        <button class="sec-toggle">Manage Keys</button>
+                        <a href="personal-info.html" class="sec-toggle" style="text-decoration:none;">Update</a>
                     </div>
                     <div class="security-item">
                         <div class="security-item-left">
                             <div class="sec-icon" style="background:rgba(245,158,11,.1);"><i class="ti ti-clock" style="color:#F59E0B;"></i></div>
                             <div>
-                                <h4>Session Timeout</h4>
-                                <p>Auto-logout after inactivity (currently 30 min)</p>
+                                <h4>Last Login</h4>
+                                <p id="last-login-label">Unknown</p>
                             </div>
                         </div>
-                        <button class="sec-toggle">Configure</button>
                     </div>
                 </div>
             </div>
-
             <!-- Change Password -->
             <div class="glass-card">
                 <div class="glass-card-header">
                     <h3><i class="ti ti-lock"></i> Change Password</h3>
                 </div>
                 <div class="glass-card-body">
-                    <form class="form-section">
+                    <div id="pw-alert" class="form-alert"></div>
+                    <form class="form-section" id="change-pw-form">
                         <div class="form-group">
                             <label class="form-label">Current Password</label>
-                            <input type="password" class="form-input" placeholder="Enter current password">
+                            <input type="password" class="form-input" id="field-current_pw" placeholder="Enter current password">
                         </div>
                         <div class="form-group">
                             <label class="form-label">New Password</label>
-                            <input type="password" class="form-input" placeholder="Min. 8 characters">
+                            <input type="password" class="form-input" id="field-new_pw" placeholder="Min. 8 characters">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Confirm New Password</label>
-                            <input type="password" class="form-input" placeholder="Re-enter new password">
+                            <input type="password" class="form-input" id="field-confirm_pw" placeholder="Re-enter new password">
                         </div>
                         <div class="form-actions">
-                            <button type="submit" class="btn-save"><i class="ti ti-lock"></i> Update Password</button>
+                            <button type="submit" class="btn-save" id="change-pw-btn"><i class="ti ti-lock"></i> Update Password</button>
                         </div>
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 <script src="../shared/theme.js"></script>
+<script src="../shared/user-cache.js"></script>
 <script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
+<script>
+const API_BASE = 'https://vyomplus.onrender.com';
+function getCookieToken() { var m = document.cookie.match(/session_token=([^;]+)/); return m ? m[1] : ''; }
+
+// Populate security info from cache
+(function() {
+    var p = window.VyomUser ? window.VyomUser.get() : null;
+    if (!p) return;
+    // 2FA badge
+    var badge = document.getElementById('tfa-badge');
+    var btn = document.getElementById('tfa-toggle-btn');
+    var methodLabel = document.getElementById('tfa-method-label');
+    if (p.two_fa_enabled) {
+        badge.className = 'sec-badge sec-enabled';
+        badge.textContent = 'Enabled';
+        btn.textContent = 'Disable';
+        btn.style.background = 'rgba(255,255,255,.06)';
+        btn.style.color = 'var(--color-text-secondary)';
+        btn.style.border = '1px solid var(--color-border)';
+        if (p.two_fa_method) methodLabel.textContent = 'via ' + p.two_fa_method;
+    } else {
+        badge.className = 'sec-badge sec-disabled';
+        badge.textContent = 'Disabled';
+        btn.textContent = 'Enable';
+    }
+    // Recovery email
+    var recEl = document.getElementById('recovery-email-label');
+    if (recEl) recEl.textContent = p.recovery_email ? p.recovery_email : 'Not set';
+    // Last login
+    var llEl = document.getElementById('last-login-label');
+    if (llEl && p.last_login) {
+        try { llEl.textContent = new Date(p.last_login).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'}); } catch(e) { llEl.textContent = p.last_login; }
+    }
+})();
+
+// Change password form
+document.getElementById('change-pw-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var alertEl = document.getElementById('pw-alert');
+    var btn = document.getElementById('change-pw-btn');
+    var cur = document.getElementById('field-current_pw').value;
+    var nw  = document.getElementById('field-new_pw').value;
+    var cnf = document.getElementById('field-confirm_pw').value;
+    if (!cur || !nw || !cnf) {
+        alertEl.className = 'form-alert error'; alertEl.textContent = 'All fields are required.'; alertEl.style.display = 'block'; return;
+    }
+    if (nw !== cnf) {
+        alertEl.className = 'form-alert error'; alertEl.textContent = 'New passwords do not match.'; alertEl.style.display = 'block'; return;
+    }
+    if (nw.length < 8) {
+        alertEl.className = 'form-alert error'; alertEl.textContent = 'Password must be at least 8 characters.'; alertEl.style.display = 'block'; return;
+    }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Updating...';
+    try {
+        var res = await fetch(API_BASE + '/profile/change-password', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCookieToken() },
+            body: JSON.stringify({ current_password: cur, new_password: nw })
+        });
+        var data = await res.json();
+        if (res.ok) {
+            alertEl.className = 'form-alert success'; alertEl.textContent = 'Password updated successfully.';
+            document.getElementById('change-pw-form').reset();
+        } else {
+            alertEl.className = 'form-alert error'; alertEl.textContent = data.detail || 'Failed. Please try again.';
+        }
+    } catch(err) {
+        alertEl.className = 'form-alert error'; alertEl.textContent = 'Network error. Please try again.';
+    }
+    alertEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-lock"></i> Update Password';
+    setTimeout(function() { alertEl.style.display = 'none'; }, 4500);
+});
+</script>
 </body>
 </html>

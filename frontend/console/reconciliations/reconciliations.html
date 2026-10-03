@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reconciliations – VYOM+</title>
+    <title>Reconciliations â€“ VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -422,8 +422,8 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
-                <div class="sidebar-user-info"><div class="sidebar-user-name">Jane Doe</div><div class="sidebar-user-role">CFO · Apex Retailers</div></div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
+                <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div><div class="sidebar-user-role" id="sidebar-user-role-text"></div></div>
             </a>
         </div>
     </nav>
@@ -469,7 +469,7 @@
                     <i class="ti ti-file-text"></i>
                     <div class="tab-label-group">
                         <span class="tab-name">GST Reconciliation</span>
-                        <span class="tab-badge">Monthly · ITC & Returns</span>
+                        <span class="tab-badge">Monthly Â· ITC & Returns</span>
                     </div>
                 </button>
                 <button class="tab-btn" data-tab="ledger">
@@ -488,7 +488,7 @@
                         <div id="stat-left-icon-bg" style="width:36px;height:36px;background:rgba(16,185,129,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;"><i class="ti ti-check" id="stat-left-icon" style="color:#10B981;font-size:18px;"></i></div>
                         <div id="stat-left-title" style="font-size:13px;font-weight:600;color:#94a3b8;">Cleared Amount</div>
                     </div>
-                    <div id="stat-left-value" style="font-size:32px;font-weight:800;color:#10B981;">₹0</div>
+                    <div id="stat-left-value" style="font-size:32px;font-weight:800;color:#10B981;">â‚¹0</div>
                     <div id="stat-left-desc" style="font-size:12px;color:#64748b;margin-top:4px;">Loading...</div>
                 </div>
                 <div class="glass-card" style="padding:20px;border-color:rgba(245,158,11,0.25);">
@@ -496,7 +496,7 @@
                         <div id="stat-mid-icon-bg" style="width:36px;height:36px;background:rgba(245,158,11,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;"><i class="ti ti-alert-triangle" id="stat-mid-icon" style="color:#F59E0B;font-size:18px;"></i></div>
                         <div id="stat-mid-title" style="font-size:13px;font-weight:600;color:#94a3b8;">Unreconciled Difference</div>
                     </div>
-                    <div id="stat-mid-value" style="font-size:32px;font-weight:800;color:#F59E0B;">₹0</div>
+                    <div id="stat-mid-value" style="font-size:32px;font-weight:800;color:#F59E0B;">â‚¹0</div>
                     <div id="stat-mid-desc" style="font-size:12px;color:#64748b;margin-top:4px;">Loading...</div>
                 </div>
                 <div class="glass-card" style="padding:20px;border-color:rgba(37,99,235,0.25);">
@@ -530,7 +530,7 @@
     </div>
 <script src="../shared/theme.js"></script>
 <script src="../shared/canvas.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script src="reconciliations.js"></script>
 </body>

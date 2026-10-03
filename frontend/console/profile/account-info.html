@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account & Business – VYOM+</title>
+    <title>Account &amp; Business - VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,23 +16,24 @@
         .form-group { display:flex; flex-direction:column; gap:8px; }
         .form-group.full { grid-column:span 2; }
         .form-label { font-size:12px; font-weight:600; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:.04em; }
-        .form-input { background:rgba(15,23,42,.8); border:1px solid var(--color-border); border-radius:10px; padding:12px 16px; font-size:14px; color:var(--color-text-primary); font-family:'Inter',sans-serif; outline:none; transition:border-color .2s; }
+        .form-input { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:10px; padding:12px 16px; font-size:14px; color:var(--color-text-primary); font-family:inherit; outline:none; transition:border-color .2s; }
         .form-input:focus { border-color:rgba(37,99,235,.5); box-shadow:0 0 0 3px rgba(37,99,235,.08); }
         .form-input[readonly] { opacity:.6; cursor:not-allowed; }
         .form-hint { font-size:11px; color:var(--color-text-muted); margin-top:-4px; }
         .form-actions { display:flex; gap:12px; justify-content:flex-end; padding-top:8px; }
-        .btn-save { background:#2563EB; color:white; border:none; border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
+        .btn-save { background:#2563EB; color:white; border:none; border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:8px; }
         .btn-save:hover { background:#1D4ED8; transform:translateY(-1px); }
+        .btn-save:disabled { opacity:.6; cursor:not-allowed; transform:none; }
         .btn-cancel { background:transparent; color:var(--color-text-secondary); border:1px solid var(--color-border); border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
         .btn-cancel:hover { background:rgba(255,255,255,.05); color:var(--color-text-primary); }
+        .form-alert { border-radius:10px; padding:12px 16px; font-size:13px; font-weight:500; display:none; margin-bottom:12px; }
+        .form-alert.success { background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); color:#10B981; }
+        .form-alert.error { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#EF4444; }
+        .section-divider { font-size:11px; font-weight:700; color:var(--color-text-muted); text-transform:uppercase; letter-spacing:.08em; padding:4px 0; border-bottom:1px solid var(--color-border); margin-bottom:4px; }
+        @keyframes spin { to { transform:rotate(360deg); } }
     </style>
-    <!-- Theme: apply before paint to prevent flash -->
-    <script>
-        (function() {
-            var t = localStorage.getItem("gst_theme") || "dark";
-            if (t === "light") document.documentElement.classList.add("light-mode");
-        })();
-    </script>
+    <script>(function() { var t = localStorage.getItem("gst_theme") || "dark"; if (t === "light") document.documentElement.classList.add("light-mode"); })();</script>
+    <script src="../shared/onboarding-guard.js"></script>
 </head>
 <body>
 <canvas id="bg-canvas"></canvas>
@@ -64,13 +65,12 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
-                <div class="sidebar-user-info"><div class="sidebar-user-name">Jane Doe</div><div class="sidebar-user-role">CFO · Apex Retailers</div></div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
+                <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div><div class="sidebar-user-role" id="sidebar-user-role-text"></div></div>
             </a>
         </div>
     </nav>
     <button class="sidebar-toggle" id="sidebar-toggle"><i class="ti ti-chevron-left"></i></button>
-
     <div class="console-main">
         <div class="console-topbar">
             <div class="topbar-left">
@@ -82,51 +82,107 @@
                 </div>
             </div>
         </div>
-
-        <div class="console-content" style="max-width:800px;">
+        <div class="console-content" style="max-width:900px;">
+            <div id="form-alert" class="form-alert"></div>
             <div class="glass-card">
                 <div class="glass-card-header">
                     <h3><i class="ti ti-building"></i> Business &amp; Tax Registration</h3>
                 </div>
                 <div class="glass-card-body">
-                    <form class="form-section">
+                    <form class="form-section" id="business-info-form">
+                        <div class="section-divider">Business Identity</div>
                         <div class="form-row">
                             <div class="form-group full">
                                 <label class="form-label">Legal Business Name</label>
-                                <input type="text" class="form-input" value="Apex Retailers Private Limited">
+                                <input type="text" class="form-input" id="biz-legal_name" placeholder="Registered legal name">
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Trade / Brand Name</label>
+                                <input type="text" class="form-input" id="biz-trade_name" placeholder="Trade name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Display Name</label>
+                                <input type="text" class="form-input" id="biz-display_name" placeholder="Name shown in the app">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Entity Type</label>
+                                <input type="text" class="form-input" id="biz-entity_type" placeholder="e.g. Private Limited, LLP">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Industry Sector</label>
+                                <input type="text" class="form-input" id="biz-industry_sector" placeholder="e.g. Retail, Manufacturing">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Business Email</label>
+                                <input type="email" class="form-input" id="biz-email" placeholder="business@company.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Business Phone</label>
+                                <input type="tel" class="form-input" id="biz-phone" placeholder="+91 XXXXX XXXXX">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Website</label>
+                                <input type="url" class="form-input" id="biz-website" placeholder="https://yourwebsite.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Financial Year</label>
+                                <input type="text" class="form-input" id="biz-financial_year" placeholder="April-March">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Currency</label>
+                                <input type="text" class="form-input" id="biz-currency" placeholder="INR">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Timezone</label>
+                                <input type="text" class="form-input" id="biz-timezone" placeholder="IST">
+                            </div>
+                        </div>
+
+                        <div class="section-divider">Tax &amp; Compliance</div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">GSTIN</label>
-                                <input type="text" class="form-input" value="27AAAAA1111A1Z1" readonly>
-                                <span class="form-hint">Contact support to update GSTIN</span>
+                                <input type="text" class="form-input" id="biz-gstin" placeholder="22AAAAA0000A1Z5">
                             </div>
+                            <div class="form-group">
+                                <label class="form-label">GST Status</label>
+                                <input type="text" class="form-input" id="biz-gst_status" placeholder="Active / Cancelled">
+                            </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">PAN Number</label>
-                                <input type="text" class="form-input" value="AAAAA1111A" readonly>
-                                <span class="form-hint">Contact support to update PAN</span>
+                                <input type="text" class="form-input" id="biz-pan" placeholder="AAAAA0000A">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">PAN Holder Name</label>
+                                <input type="text" class="form-input" id="biz-pan_holder_name" placeholder="Name on PAN card">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">State</label>
-                                <input type="text" class="form-input" value="Maharashtra">
+                                <label class="form-label">Tax Jurisdiction</label>
+                                <input type="text" class="form-input" id="biz-tax_jurisdiction" placeholder="e.g. Maharashtra">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Jurisdiction</label>
-                                <input type="text" class="form-input" value="Zone 4 – Mumbai North">
+                                <label class="form-label">Tax Regime</label>
+                                <input type="text" class="form-input" id="biz-tax_regime" placeholder="New / Old">
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group full">
-                                <label class="form-label">Registered Business Address</label>
-                                <input type="text" class="form-input" value="Plot No. 14, MIDC Industrial Area, Andheri East, Mumbai – 400093">
-                            </div>
-                        </div>
+
                         <div class="form-actions">
                             <button type="button" class="btn-cancel" onclick="history.back()">Cancel</button>
-                            <button type="submit" class="btn-save"><i class="ti ti-check"></i> Save Changes</button>
+                            <button type="submit" class="btn-save" id="save-biz-btn"><i class="ti ti-check"></i> Save Changes</button>
                         </div>
                     </form>
                 </div>
@@ -135,7 +191,58 @@
     </div>
 </div>
 <script src="../shared/theme.js"></script>
+<script src="../shared/user-cache.js"></script>
 <script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
+<script>
+const API_BASE = 'https://vyomplus.onrender.com';
+function getCookieToken() { var m = document.cookie.match(/session_token=([^;]+)/); return m ? m[1] : ''; }
+(function populateForm() {
+    var p = window.VyomUser ? window.VyomUser.get() : null;
+    if (!p) return;
+    var biz = p.business || {};
+    var bizFields = ['legal_name','trade_name','display_name','entity_type','industry_sector','email','phone','website','financial_year','currency','timezone','gstin','gst_status','pan','pan_holder_name','tax_jurisdiction','tax_regime'];
+    bizFields.forEach(function(f) {
+        var el = document.getElementById('biz-' + f);
+        if (el && biz[f] != null) el.value = biz[f];
+    });
+})();
+document.getElementById('business-info-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('save-biz-btn');
+    var alertEl = document.getElementById('form-alert');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Saving...';
+    var payload = {};
+    var fields = ['legal_name','trade_name','display_name','entity_type','industry_sector','email','phone','website','financial_year','currency','timezone','gstin','gst_status','pan','pan_holder_name','tax_jurisdiction','tax_regime'];
+    fields.forEach(function(f) {
+        var v = (document.getElementById('biz-' + f) || {}).value;
+        if (v && v.trim()) payload[f] = v.trim();
+    });
+    try {
+        var res = await fetch(API_BASE + '/profile/business', {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCookieToken() },
+            body: JSON.stringify(payload)
+        });
+        var data = await res.json();
+        if (res.ok) {
+            if (window.VyomUser) window.VyomUser.set({ business: Object.assign(window.VyomUser.get().business || {}, data.business || payload) });
+            alertEl.className = 'form-alert success';
+            alertEl.textContent = 'Business information saved successfully.';
+        } else {
+            alertEl.className = 'form-alert error';
+            alertEl.textContent = data.detail || 'Failed to save. Please try again.';
+        }
+    } catch(err) {
+        alertEl.className = 'form-alert error';
+        alertEl.textContent = 'Network error. Please try again.';
+    }
+    alertEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i> Save Changes';
+    setTimeout(function() { alertEl.style.display = 'none'; }, 4500);
+});
+</script>
 </body>
 </html>

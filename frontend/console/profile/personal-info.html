@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Information – VYOM+</title>
+    <title>Personal Information - VYOM+</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,21 +15,23 @@
         .form-row { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }
         .form-group { display:flex; flex-direction:column; gap:8px; }
         .form-label { font-size:12px; font-weight:600; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:.04em; }
-        .form-input { background:rgba(15,23,42,.8); border:1px solid var(--color-border); border-radius:10px; padding:12px 16px; font-size:14px; color:var(--color-text-primary); font-family:'Inter',sans-serif; outline:none; transition:border-color .2s; }
+        .form-input { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:10px; padding:12px 16px; font-size:14px; color:var(--color-text-primary); font-family:inherit; outline:none; transition:border-color .2s; }
         .form-input:focus { border-color:rgba(37,99,235,.5); box-shadow:0 0 0 3px rgba(37,99,235,.08); }
+        .form-input[readonly] { opacity:.6; cursor:not-allowed; }
+        .form-hint { font-size:11px; color:var(--color-text-muted); margin-top:-4px; }
         .form-actions { display:flex; gap:12px; justify-content:flex-end; padding-top:8px; }
-        .btn-save { background:#2563EB; color:white; border:none; border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
+        .btn-save { background:#2563EB; color:white; border:none; border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:8px; }
         .btn-save:hover { background:#1D4ED8; transform:translateY(-1px); box-shadow:0 6px 18px rgba(37,99,235,.35); }
+        .btn-save:disabled { opacity:.6; cursor:not-allowed; transform:none; }
         .btn-cancel { background:transparent; color:var(--color-text-secondary); border:1px solid var(--color-border); border-radius:10px; padding:12px 28px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
         .btn-cancel:hover { background:rgba(255,255,255,.05); color:var(--color-text-primary); }
+        .form-alert { border-radius:10px; padding:12px 16px; font-size:13px; font-weight:500; display:none; margin-bottom:12px; }
+        .form-alert.success { background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); color:#10B981; }
+        .form-alert.error { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#EF4444; }
+        @keyframes spin { to { transform:rotate(360deg); } }
     </style>
-    <!-- Theme: apply before paint to prevent flash -->
-    <script>
-        (function() {
-            var t = localStorage.getItem("gst_theme") || "dark";
-            if (t === "light") document.documentElement.classList.add("light-mode");
-        })();
-    </script>
+    <script>(function() { var t = localStorage.getItem("gst_theme") || "dark"; if (t === "light") document.documentElement.classList.add("light-mode"); })();</script>
+    <script src="../shared/onboarding-guard.js"></script>
 </head>
 <body>
 <canvas id="bg-canvas"></canvas>
@@ -61,13 +63,12 @@
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
-                <div class="sidebar-user-info"><div class="sidebar-user-name">Jane Doe</div><div class="sidebar-user-role">CFO · Apex Retailers</div></div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
+                <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div><div class="sidebar-user-role" id="sidebar-user-role-text"></div></div>
             </a>
         </div>
     </nav>
     <button class="sidebar-toggle" id="sidebar-toggle"><i class="ti ti-chevron-left"></i></button>
-
     <div class="console-main">
         <div class="console-topbar">
             <div class="topbar-left">
@@ -79,47 +80,49 @@
                 </div>
             </div>
         </div>
-
         <div class="console-content" style="max-width:800px;">
+            <div id="form-alert" class="form-alert"></div>
             <div class="glass-card">
                 <div class="glass-card-header">
                     <h3><i class="ti ti-id-badge"></i> Personal Details</h3>
                 </div>
                 <div class="glass-card-body">
-                    <form class="form-section" onsubmit="e => e.preventDefault()">
+                    <form class="form-section" id="personal-info-form">
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">First Name</label>
-                                <input type="text" class="form-input" value="Jane">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-input" id="field-full_name" placeholder="Your full name">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Last Name</label>
-                                <input type="text" class="form-input" value="Doe">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-input" id="field-username" readonly>
+                                <span class="form-hint">Username cannot be changed</span>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">Email Address</label>
-                                <input type="email" class="form-input" value="jane.doe@apexretailers.in">
+                                <input type="email" class="form-input" id="field-email" readonly>
+                                <span class="form-hint">Contact support to change your email</span>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Phone Number</label>
-                                <input type="tel" class="form-input" value="+91 98765 43210">
+                                <input type="tel" class="form-input" id="field-mobile" placeholder="+91 XXXXX XXXXX">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Designation</label>
-                                <input type="text" class="form-input" value="Chief Financial Officer">
+                                <label class="form-label">Recovery Email</label>
+                                <input type="email" class="form-input" id="field-recovery_email" placeholder="Backup email address">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Department</label>
-                                <input type="text" class="form-input" value="Finance & Accounts">
+                                <label class="form-label">Recovery Phone</label>
+                                <input type="tel" class="form-input" id="field-recovery_phone" placeholder="Backup phone number">
                             </div>
                         </div>
                         <div class="form-actions">
                             <button type="button" class="btn-cancel" onclick="history.back()">Cancel</button>
-                            <button type="submit" class="btn-save"><i class="ti ti-check"></i> Save Changes</button>
+                            <button type="submit" class="btn-save" id="save-personal-btn"><i class="ti ti-check"></i> Save Changes</button>
                         </div>
                     </form>
                 </div>
@@ -128,7 +131,62 @@
     </div>
 </div>
 <script src="../shared/theme.js"></script>
+<script src="../shared/user-cache.js"></script>
 <script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
+<script>
+const API_BASE = 'https://vyomplus.onrender.com';
+function getCookieToken() {
+    var m = document.cookie.match(/session_token=([^;]+)/);
+    return m ? m[1] : '';
+}
+(function populateForm() {
+    var p = window.VyomUser ? window.VyomUser.get() : null;
+    if (!p) return;
+    function fill(id, val) { var el = document.getElementById(id); if (el && val != null) el.value = val; }
+    fill('field-full_name', p.full_name);
+    fill('field-username', p.username);
+    fill('field-email', p.email);
+    fill('field-mobile', p.mobile);
+    fill('field-recovery_email', p.recovery_email);
+    fill('field-recovery_phone', p.recovery_phone);
+})();
+document.getElementById('personal-info-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('save-personal-btn');
+    var alertEl = document.getElementById('form-alert');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Saving...';
+    var payload = {};
+    var flds = ['full_name','mobile','recovery_email','recovery_phone'];
+    flds.forEach(function(f) {
+        var v = (document.getElementById('field-' + f) || {}).value;
+        if (v && v.trim()) payload[f] = v.trim();
+    });
+    try {
+        var res = await fetch(API_BASE + '/profile/personal', {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCookieToken() },
+            body: JSON.stringify(payload)
+        });
+        var data = await res.json();
+        if (res.ok) {
+            if (window.VyomUser) window.VyomUser.set(data.user || payload);
+            alertEl.className = 'form-alert success';
+            alertEl.textContent = 'Personal information saved successfully.';
+        } else {
+            alertEl.className = 'form-alert error';
+            alertEl.textContent = data.detail || 'Failed to save. Please try again.';
+        }
+    } catch(err) {
+        alertEl.className = 'form-alert error';
+        alertEl.textContent = 'Network error. Please try again.';
+    }
+    alertEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i> Save Changes';
+    setTimeout(function() { alertEl.style.display = 'none'; }, 4500);
+});
+</script>
 </body>
 </html>

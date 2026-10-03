@@ -33,7 +33,8 @@ from schema import (
     VoucherSchema, BankStatementInputSchema, BRSInputSchema, GodownSchema, UnitSchema, StockSchema,
     NotificationLogSchema, InvoiceGenerationSchema, InvoiceSyncSchema, InvoiceSyncItemSchema,
     PendingVoucherInputSchema, WhatsAppResetSessionSchema, WhatsAppIngestInvoiceSchema,
-    ReportGenerateSchema, WhatsAppLinkSchema, BusinessProfileSchema
+    ReportGenerateSchema, WhatsAppLinkSchema, BusinessProfileSchema,
+    UpdatePersonalInfoSchema, UpdateBusinessInfoSchema, ChangePasswordSchema, UpdateCommunicationPrefsSchema
 )
 from database import (
     Vouchers, BankStatements, BRS, godown, units, stock, notificationLogs, PendingVouchers, WhatsAppAccount
@@ -247,6 +248,15 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
                 db.rollback()
                 raise HTTPException(status_code=500, detail="database error")
             db.refresh(db_no)
+            # Fetch business profile for caching at login
+            biz_profile = db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
+            biz_data = {}
+            if biz_profile:
+                biz_data = {c.name: getattr(biz_profile, c.name) for c in biz_profile.__table__.columns}
+                # Serialize datetimes
+                for k, v in biz_data.items():
+                    if hasattr(v, 'isoformat'):
+                        biz_data[k] = v.isoformat()
             return {
                 "message": "login success",
                 "token": token,
@@ -254,7 +264,18 @@ def logi(payload: LoginSchema, response: Response, db:Session=Depends(get_db)):
                 "username": user.username,
                 "email": user.email,
                 "full_name": user.full_name,
-                "onboarding_complete": user.onboarding_complete
+                "mobile": user.mobile,
+                "mobile_verified": user.mobile_verified,
+                "two_fa_enabled": user.two_fa_enabled,
+                "two_fa_method": user.two_fa_method,
+                "recovery_email": user.recovery_email,
+                "recovery_phone": user.recovery_phone,
+                "account_status": user.account_status,
+                "last_login": user.last_login.isoformat() if user.last_login else None,
+                "communication_preferences": user.communication_preferences,
+                "marketing_consent": user.marketing_consent,
+                "onboarding_complete": user.onboarding_complete,
+                "business": biz_data
             }
         except VerifyMismatchError:
             raise HTTPException(status_code=401, detail="passwords do not match")
@@ -332,18 +353,139 @@ def get_profile_details(db: Session = Depends(get_db), user: Users = Depends(get
     profile_data = {}
     if profile:
         profile_data = {c.name: getattr(profile, c.name) for c in profile.__table__.columns}
-    
+        for k, v in profile_data.items():
+            if hasattr(v, 'isoformat'):
+                profile_data[k] = v.isoformat()
     return {
         "user": {
             "email": user.email,
             "username": user.username,
             "full_name": user.full_name,
             "mobile": user.mobile,
+            "mobile_verified": user.mobile_verified,
             "two_fa_enabled": user.two_fa_enabled,
+            "two_fa_method": user.two_fa_method,
+            "recovery_email": user.recovery_email,
+            "recovery_phone": user.recovery_phone,
+            "account_status": user.account_status,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "communication_preferences": user.communication_preferences,
+            "marketing_consent": user.marketing_consent,
             "onboarding_complete": user.onboarding_complete
         },
         "business": profile_data
     }
+
+
+@app.put("/profile/personal")
+def update_personal_info(
+    payload: UpdatePersonalInfoSchema,
+    db: Session = Depends(get_db),
+    user: Users = Depends(get_current_user_from_token)
+):
+    """Update personal/contact information for the logged-in user."""
+    data = payload.dict(exclude_unset=True, exclude_none=True)
+    for field, val in data.items():
+        if hasattr(user, field):
+            setattr(user, field, val)
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {
+        "message": "Personal information updated successfully",
+        "user": {
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "mobile": user.mobile,
+            "mobile_verified": user.mobile_verified,
+            "two_fa_enabled": user.two_fa_enabled,
+            "two_fa_method": user.two_fa_method,
+            "recovery_email": user.recovery_email,
+            "recovery_phone": user.recovery_phone,
+            "account_status": user.account_status,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "communication_preferences": user.communication_preferences,
+            "marketing_consent": user.marketing_consent,
+            "onboarding_complete": user.onboarding_complete
+        }
+    }
+
+
+@app.put("/profile/business")
+def update_business_info(
+    payload: UpdateBusinessInfoSchema,
+    db: Session = Depends(get_db),
+    user: Users = Depends(get_current_user_from_token)
+):
+    """Update business/tax/GST information for the logged-in user."""
+    profile = db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
+    if not profile:
+        profile = BusinessProfile(user_id=user.id, unique_id=user.unique_id)
+        db.add(profile)
+    data = payload.dict(exclude_unset=True, exclude_none=True)
+    for field, val in data.items():
+        if hasattr(profile, field):
+            setattr(profile, field, val)
+    profile.updated_at = datetime.utcnow()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    profile_data = {c.name: getattr(profile, c.name) for c in profile.__table__.columns}
+    for k, v in profile_data.items():
+        if hasattr(v, 'isoformat'):
+            profile_data[k] = v.isoformat()
+    return {"message": "Business information updated successfully", "business": profile_data}
+
+
+@app.post("/profile/change-password")
+def change_password(
+    payload: ChangePasswordSchema,
+    db: Session = Depends(get_db),
+    user: Users = Depends(get_current_user_from_token)
+):
+    """Change password after verifying the current password."""
+    ph = PasswordHasher()
+    try:
+        ph.verify(user.password, payload.current_password)
+    except VerifyMismatchError:
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    if len(payload.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    user.password = ph.hash(payload.new_password)
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {"message": "Password updated successfully"}
+
+
+@app.put("/profile/communication-prefs")
+def update_communication_prefs(
+    payload: UpdateCommunicationPrefsSchema,
+    db: Session = Depends(get_db),
+    user: Users = Depends(get_current_user_from_token)
+):
+    """Update email/sms/whatsapp communication preferences."""
+    prefs = dict(user.communication_preferences or {"email": True, "sms": False, "whatsapp": False})
+    if payload.email is not None:
+        prefs["email"] = payload.email
+    if payload.sms is not None:
+        prefs["sms"] = payload.sms
+    if payload.whatsapp is not None:
+        prefs["whatsapp"] = payload.whatsapp
+    user.communication_preferences = prefs
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    return {"message": "Communication preferences updated", "communication_preferences": prefs}
 
 
 @app.post("/upload")

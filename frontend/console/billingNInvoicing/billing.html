@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -12,15 +12,15 @@
 <link rel="stylesheet" href="../shared/sidebar.css">
 <style>
 :root {
-    --bg-0:#0a0e17; --surface:rgba(255,255,255,0.035); --border:rgba(255,255,255,0.09);
-    --border-strong:rgba(255,255,255,0.14); --text-hi:#f8fafc; --text-mid:#94a3b8; --text-lo:#64748b;
-    --green:#10B981; --amber:#F59E0B; --red:#EF4444; --blue:#2563EB; --blue-light:#3b82f6; --purple:#8b5cf6;
-    --radius:16px; --input-bg:rgba(255,255,255,0.04);
+    --bg-0:var(--color-bg-deep, #06140f); --surface:var(--color-bg-surface, #0a1c17); --border:var(--color-border, rgba(213,240,246,0.14));
+    --border-strong:var(--color-border-hover, rgba(124,213,177,0.5)); --text-hi:var(--color-text-primary, #eae9fc); --text-mid:var(--color-text-secondary, #b0c9c4); --text-lo:var(--color-text-muted, #7a9a94);
+    --green:var(--color-success, #7cd5b1); --amber:var(--color-warning, #f59e0b); --red:var(--color-error, #ef4444); --blue:var(--color-accent, #7cd5b1); --blue-light:var(--color-accent, #7cd5b1); --purple:#8b5cf6;
+    --radius:16px; --input-bg:var(--color-bg-input, #0f2620);
 }
 html.light-mode {
-    --bg-0:#f0f5fd; --surface:rgba(255,255,255,0.8); --border:rgba(37,99,235,0.12);
-    --border-strong:rgba(37,99,235,0.22); --text-hi:#1e293b; --text-mid:#334155; --text-lo:#64748b;
-    --input-bg:rgba(255,255,255,0.95);
+    --bg-0:#ebf9f4; --surface:#ffffff; --border:rgba(9,36,42,0.14);
+    --border-strong:rgba(42,131,96,0.35); --text-hi:#040316; --text-mid:#1a4038; --text-lo:#36665c;
+    --input-bg:#ffffff; --blue:#2a8360; --blue-light:#2a8360;
 }
 * { box-sizing:border-box; margin:0; padding:0; }
 body { font-family:'Inter',sans-serif; background-color:var(--bg-0); color:var(--text-hi); overflow-x:hidden; }
@@ -203,10 +203,10 @@ body { font-family:'Inter',sans-serif; background-color:var(--bg-0); color:var(-
         </div>
         <div class="sidebar-footer">
             <a href="../profile/profile.html" class="sidebar-user">
-                <div class="sidebar-avatar">JD</div>
+                <div class="sidebar-avatar" id="sidebar-avatar-initials">?</div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">Jane Doe</div>
-                    <div class="sidebar-user-role">CFO &middot; Apex Retailers</div>
+                    <div class="sidebar-user-name" id="sidebar-user-name-text">Loading...</div>
+                    <div class="sidebar-user-role" id="sidebar-user-role-text"></div>
                 </div>
             </a>
         </div>
@@ -238,7 +238,7 @@ body { font-family:'Inter',sans-serif; background-color:var(--bg-0); color:var(-
                         <div class="form-group">
                             <label for="voucher_type"><i class="ti ti-selector" style="font-size:11px;margin-right:4px;"></i>Voucher Type</label>
                             <select id="voucher_type" class="voucher-type-select">
-                                <optgroup label="── Accounting Vouchers ──">
+                                <optgroup label="â”€â”€ Accounting Vouchers â”€â”€">
                                     <option value="Payment">Payment</option>
                                     <option value="Receipt">Receipt</option>
                                     <option value="Contra">Contra</option>
@@ -248,18 +248,18 @@ body { font-family:'Inter',sans-serif; background-color:var(--bg-0); color:var(-
                                     <option value="Memorandum">Memorandum</option>
                                     <option value="ReversingJournal">Reversing Journal</option>
                                 </optgroup>
-                                <optgroup label="── Invoice — Sales ──">
+                                <optgroup label="â”€â”€ Invoice â€” Sales â”€â”€">
                                     <option value="Sales" selected>Sales Invoice</option>
                                     <option value="BillOfSupply">Bill of Supply</option>
                                     <option value="ExportInvoice">Export Invoice</option>
                                     <option value="CreditNote">Credit Note</option>
                                 </optgroup>
-                                <optgroup label="── Invoice — Purchase ──">
+                                <optgroup label="â”€â”€ Invoice â€” Purchase â”€â”€">
                                     <option value="Purchase">Purchase Invoice</option>
                                     <option value="SelfInvoiceRCM">Self-Invoice (RCM)</option>
                                     <option value="DebitNote">Debit Note</option>
                                 </optgroup>
-                                <optgroup label="── Inventory Vouchers ──">
+                                <optgroup label="â”€â”€ Inventory Vouchers â”€â”€">
                                     <option value="PurchaseOrder">Purchase Order</option>
                                     <option value="SalesOrder">Sales Order</option>
                                     <option value="DeliveryNote">Delivery Note</option>
@@ -272,14 +272,14 @@ body { font-family:'Inter',sans-serif; background-color:var(--bg-0); color:var(-
                                     <option value="StockJournal">Stock Journal</option>
                                     <option value="PhysicalStock">Physical Stock</option>
                                 </optgroup>
-                                <optgroup label="── Pre-Sales ──">
+                                <optgroup label="â”€â”€ Pre-Sales â”€â”€">
                                     <option value="Quotation">Quotation / Proforma Invoice</option>
                                 </optgroup>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Dynamic form body — rendered by billing.js -->
+                    <!-- Dynamic form body â€” rendered by billing.js -->
                     <div id="dynamic-form-body"></div>
 
                     <div class="form-actions">
@@ -349,7 +349,7 @@ body { font-family:'Inter',sans-serif; background-color:var(--bg-0); color:var(-
 
 <script src="../shared/notifications.js"></script>
 <script src="../shared/theme.js"></script>
-<script src="../shared/sidebar.js"></script>
+<script src="../shared/user-cache.js"></script><script src="../shared/sidebar.js"></script>
 <script src="billing.js"></script>
 
 </body>

@@ -1238,6 +1238,12 @@ body {
     animation: none;
 }
 
+@media (max-width: 900px) {
+    .console-content .dashboard-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 .console-content .main-content-area {
     min-width: 0;
 }

@@ -264,3 +264,62 @@ class WhatsAppLinkSchema(BaseModel):
     mobile: Optional[str] = None
 
 
+class UpdatePersonalInfoSchema(BaseModel):
+    full_name: Optional[str] = None
+    mobile: Optional[str] = None
+    designation: Optional[str] = None
+    department: Optional[str] = None
+    recovery_email: Optional[str] = None
+    recovery_phone: Optional[str] = None
+    marketing_consent: Optional[bool] = None
+
+class UpdateBusinessInfoSchema(BaseModel):
+    # Basic business info
+    legal_name: Optional[str] = None
+    trade_name: Optional[str] = None
+    display_name: Optional[str] = None
+    entity_type: Optional[str] = None
+    business_constitution: Optional[str] = None
+    nature_business: Optional[str] = None
+    business_description: Optional[str] = None
+    industry_sector: Optional[str] = None
+    website: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    employee_count: Optional[int] = None
+    annual_turnover: Optional[str] = None
+    expected_turnover: Optional[str] = None
+    financial_year: Optional[str] = None
+    accounting_start: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    books_from_date: Optional[str] = None
+    previous_software: Optional[str] = None
+    # Tax info
+    pan: Optional[str] = None
+    pan_holder_name: Optional[str] = None
+    pan_type: Optional[str] = None
+    tan: Optional[str] = None
+    tan_holder_name: Optional[str] = None
+    tax_jurisdiction: Optional[str] = None
+    assessing_officer: Optional[str] = None
+    itr_filing_status: Optional[str] = None
+    tax_audit_applicable: Optional[bool] = None
+    tax_regime: Optional[str] = None
+    tds_applicable: Optional[bool] = None
+    tcs_applicable: Optional[bool] = None
+    # GST
+    gstin: Optional[str] = None
+    gst_status: Optional[str] = None
+    gst_reg_date: Optional[str] = None
+    gst_effective_date: Optional[str] = None
+
+class ChangePasswordSchema(BaseModel):
+    current_password: str
+    new_password: str
+
+class UpdateCommunicationPrefsSchema(BaseModel):
+    email: Optional[bool] = None
+    sms: Optional[bool] = None
+    whatsapp: Optional[bool] = None
+

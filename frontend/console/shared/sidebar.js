@@ -1,4 +1,4 @@
-/* ==============================================
+﻿/* ==============================================
    GST Ledger Hub - Shared Sidebar JS
    Handles: toggle, active state, background anim,
             theme toggle injection
@@ -27,6 +27,11 @@
     // Restore from localStorage
     const savedState = localStorage.getItem(COLLAPSED_KEY) === 'true';
     applyCollapsedState(savedState);
+
+    // Populate sidebar footer with real user data from cache
+    if (window.VyomUser) {
+        window.VyomUser.populateSidebar();
+    }
 
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
@@ -58,7 +63,41 @@
     }
 
     // Mobile overlay toggle
-    const mobileToggle = document.getElementById('mobile-sidebar-toggle');
+    let overlay = document.getElementById('mobile-sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'mobile-sidebar-overlay';
+        document.body.appendChild(overlay);
+    }
+    let mobileToggle = document.getElementById('mobile-sidebar-toggle');
+    const topbarLeft = document.querySelector('.console-topbar .topbar-left');
+    if (!mobileToggle && topbarLeft) {
+        mobileToggle = document.createElement('button');
+        mobileToggle.className = 'mobile-topbar-toggle';
+        mobileToggle.id = 'mobile-sidebar-toggle';
+        mobileToggle.setAttribute('aria-label', 'Toggle Navigation Menu');
+        mobileToggle.innerHTML = '<i class="ti ti-menu-2"></i>';
+        topbarLeft.insertBefore(mobileToggle, topbarLeft.firstChild);
+    }
+    function toggleMobileSidebar(open) {
+        if (!sidebar) return;
+        const shouldOpen = open !== undefined ? open : !sidebar.classList.contains('mobile-open');
+        if (shouldOpen) {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('show');
+        } else {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('show');
+        }
+    }
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMobileSidebar();
+        });
+    }
+    if (overlay) overlay.addEventListener('click', () => { toggleMobileSidebar(false); });
+    // Mobile toggle setup complete
     if (mobileToggle) {
         mobileToggle.addEventListener('click', () => {
             sidebar.classList.toggle('mobile-open');

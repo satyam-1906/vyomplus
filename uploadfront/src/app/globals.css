@@ -387,6 +387,21 @@ body.sidebar-collapsed .console-main { margin-left: var(--sidebar-width-collapse
   .sidebar { transform: translateX(-100%); transition: transform var(--sidebar-transition), width var(--sidebar-transition); }
   .sidebar.mobile-open { transform: translateX(0); width: var(--sidebar-width-expanded); }
   .console-main { margin-left: 0 !important; }
-  .console-topbar { padding: 14px 18px; }
-  .console-content { padding: 18px; }
+  .console-topbar { padding: 12px 14px; gap: 8px; flex-wrap: wrap; }
+  .console-content { padding: 14px 12px 30px; gap: 16px; }
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 { grid-template-columns: 1fr !important; }
+}
+
+html.light-mode input,
+html.light-mode select,
+html.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: rgba(118, 159, 205, 0.35) !important;
+}
+
+html.light-mode .glass-card {
+  background: #ffffff !important;
+  border-color: rgba(118, 159, 205, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(118, 159, 205, 0.12) !important;
 }

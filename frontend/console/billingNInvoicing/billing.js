@@ -29,15 +29,21 @@ const INVENTORY_VOUCHERS  = new Set(["PurchaseOrder", "SalesOrder", "DeliveryNot
 const PRESALES_VOUCHERS   = new Set(["Quotation"]);
 
 // Initialize Page
-(async function init() {
+async function init() {
     resetDates();
     await Promise.all([fetchInventory(), fetchGodowns()]);
     // Set type selector listener
-    voucherTypeSelect.addEventListener('change', handleTypeChange);
+    if (voucherTypeSelect) voucherTypeSelect.addEventListener('change', handleTypeChange);
     // Initial draw
     handleTypeChange();
     await fetchAllVouchers();
-})();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
 
 function resetDates() {
     // dates handled dynamically inside form templates
@@ -45,7 +51,8 @@ function resetDates() {
 
 async function fetchInventory() {
     try {
-        const res = await fetch(`${API_BASE}/stock`);
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${API_BASE}/stock`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error();
         inventoryItems = await res.json();
     } catch {
@@ -56,7 +63,8 @@ async function fetchInventory() {
 
 async function fetchGodowns() {
     try {
-        const res = await fetch(`${API_BASE}/godown`);
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${API_BASE}/godown`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error();
         allGodowns = await res.json();
     } catch {
@@ -1379,7 +1387,8 @@ generateBtn.addEventListener('click', async function (e) {
 // ── VOUCHER LISTING & FILTERS ─────────────────────────────────────────────────
 async function fetchAllVouchers() {
     try {
-        const res = await fetch(`${API_BASE}/vouchers`);
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${API_BASE}/vouchers`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error();
         salesInvoices = await res.json();
         renderInvoiceList();

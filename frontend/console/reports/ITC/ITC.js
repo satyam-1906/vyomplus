@@ -111,9 +111,16 @@ function renderTable() {
     }).join('');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initITC() {
     loadITCData();
-    
-    document.getElementById('search-input').addEventListener('input', renderTable);
-    document.getElementById('filter-status').addEventListener('change', renderTable);
-});
+    const searchEl = document.getElementById('search-input');
+    const filterEl = document.getElementById('filter-status');
+    if (searchEl) searchEl.addEventListener('input', renderTable);
+    if (filterEl) filterEl.addEventListener('change', renderTable);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initITC);
+} else {
+    initITC();
+}

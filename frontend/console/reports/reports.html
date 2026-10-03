@@ -149,18 +149,22 @@
             });
             const totalRemaining = totalClaimable - totalClaimed;
             
-            const fmt = (num) => 'â‚¹' + Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const fmt = (num) => '\u20B9' + Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
             statsEl.innerHTML = `
                 <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span>Claimable ITC:</span><span style="font-weight:600;color:var(--color-text-primary);">${fmt(totalClaimable)}</span></div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span>Claimed ITC:</span><span style="font-weight:600;color:#10B981;;">${fmt(totalClaimed)}</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span>Claimed ITC:</span><span style="font-weight:600;color:#10B981;">${fmt(totalClaimed)}</span></div>
                 <div style="display:flex;justify-content:space-between;"><span>ITC Remaining:</span><span style="font-weight:600;color:#F59E0B;">${fmt(totalRemaining)}</span></div>
             `;
         } catch (e) {
             statsEl.innerHTML = '<span style="color:#EF4444;text-align:center;display:block;">Failed to load ITC stats</span>';
         }
     }
-    document.addEventListener('DOMContentLoaded', loadITCCardStats);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadITCCardStats);
+    } else {
+        loadITCCardStats();
+    }
 </script>
 </body>
 </html>

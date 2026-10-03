@@ -33,7 +33,8 @@ function getStatusBadge(status) {
 async function loadITCData() {
     const tbody = document.getElementById('voucher-tbody');
     try {
-        const res = await fetch(`${API_BASE}/vouchers`);
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${API_BASE}/vouchers`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Network response was not ok');
         allVouchers = await res.json();
         

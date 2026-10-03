@@ -61,7 +61,8 @@ function getMockVouchers() {
 
 async function fetchVouchers() {
     try {
-        const res = await fetch(API_BASE + '/vouchers');
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(API_BASE + '/vouchers', { credentials: 'include', headers: headers });
         if (res.ok) {
             allVouchers = await res.json();
             pendingVouchers = allVouchers.filter(v => (v.status || '').toLowerCase() === 'pending');
@@ -218,7 +219,8 @@ function renderStatements() {
 async function loadStatements() {
     tbody.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--color-text-muted);">Loading statements&hellip;</td></tr>';
     try {
-        const res = await fetch(API_BASE + '/bank-statements');
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(API_BASE + '/bank-statements', { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Server returned ' + res.status);
         const data = await res.json();
         statements = Array.isArray(data) ? data : [];

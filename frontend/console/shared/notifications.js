@@ -121,7 +121,8 @@
         if (!list) return;
 
         try {
-            const res = await fetch(`${API_BASE}/notification-log`);
+            const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(`${API_BASE}/notification-log`, { credentials: 'include', headers: headers });
             if (!res.ok) return;
             const logs = await res.json();
 

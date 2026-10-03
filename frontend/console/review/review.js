@@ -46,7 +46,10 @@ async function init() {
 /* ── Stats ──────────────────────────────────────────────────────────── */
 async function loadStats() {
     try {
-        const res  = await fetch(`${API_BASE}/pending-vouchers/stats`);
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const uid = window.VyomUser ? window.VyomUser.getUniqueId() : (localStorage.getItem('unique_id') || '');
+        const url = uid ? `${API_BASE}/pending-vouchers/stats?unique_id=${encodeURIComponent(uid)}` : `${API_BASE}/pending-vouchers/stats`;
+        const res  = await fetch(url, { credentials: 'include', headers: headers });
         if (!res.ok) return;
         const data = await res.json();
         statPending.textContent = data.pending;
@@ -60,7 +63,10 @@ async function loadStats() {
 /* ── Queue ──────────────────────────────────────────────────────────── */
 async function loadQueue() {
     try {
-        const res = await fetch(`${API_BASE}/pending-vouchers`);
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const uid = window.VyomUser ? window.VyomUser.getUniqueId() : (localStorage.getItem('unique_id') || '');
+        const url = uid ? `${API_BASE}/pending-vouchers?unique_id=${encodeURIComponent(uid)}` : `${API_BASE}/pending-vouchers`;
+        const res = await fetch(url, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Server ' + res.status);
         pendingQueue  = await res.json();
         currentIndex  = 0;

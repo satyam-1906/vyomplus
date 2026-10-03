@@ -79,7 +79,8 @@ async function loadBRS() {
     const tbody = document.getElementById('recon-table-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--color-text-muted);">Loading BRS records&hellip;</td></tr>';
     try {
-        const res = await fetch(API_BASE + '/BRS');
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(API_BASE + '/BRS', { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Server returned ' + res.status);
         brsRecords = await res.json();
     } catch (err) {

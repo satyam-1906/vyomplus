@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -129,8 +129,9 @@
     async function loadITCCardStats() {
         const statsEl = document.getElementById('itc-card-stats');
         if (!statsEl) return;
-        try {
-            const res = await fetch('http://127.0.0.1:8000/vouchers');
+            const apiBase = window.API_BASE || 'https://vyomplus.onrender.com';
+            const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(apiBase + '/vouchers', { credentials: 'include', headers: headers });
             if (!res.ok) throw new Error();
             const vouchers = await res.json();
             const purchases = vouchers.filter(v => v.voucher_type && v.voucher_type.toLowerCase() === 'purchase');

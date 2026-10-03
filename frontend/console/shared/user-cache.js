@@ -108,17 +108,31 @@ window.VyomUser = (function () {
         if (roleEl)   roleEl.textContent   = getRole();
     }
 
-    function getCookieToken() {
-        var match = document.cookie.match(/session_token=([^;]+)/);
+    function getUniqueId() {
+        var p = get();
+        if (p && p.unique_id) return p.unique_id;
+        var loc = localStorage.getItem('unique_id');
+        if (loc) return loc;
+        var match = document.cookie.match(/unique_id=([^;]+)/);
         return match ? match[1] : '';
+    }
+
+    function getAuthHeaders() {
+        var headers = {};
+        var uid = getUniqueId();
+        if (uid) headers['X-Unique-ID'] = uid;
+        var token = getCookieToken();
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        return headers;
     }
 
     async function refreshFromAPI() {
         try {
+            var headers = getAuthHeaders();
             var res = await fetch(API_BASE + '/profile/details', {
                 method: 'GET',
                 credentials: 'include',
-                headers: { 'Authorization': 'Bearer ' + getCookieToken() }
+                headers: headers
             });
             if (!res.ok) return null;
             var data = await res.json();
@@ -130,5 +144,5 @@ window.VyomUser = (function () {
         }
     }
 
-    return { get, set, clear, logout, getInitials, getDisplayName, getRole, populateSidebar, refreshFromAPI };
+    return { get, set, clear, logout, getInitials, getDisplayName, getRole, populateSidebar, refreshFromAPI, getUniqueId, getAuthHeaders };
 })();

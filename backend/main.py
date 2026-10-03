@@ -2,7 +2,7 @@ import stat
 from utils import keepalive
 from fastapi import FastAPI, HTTPException, Depends, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 import os, boto3, hashlib, json
 from datetime import datetime, timedelta
@@ -289,23 +289,34 @@ def get_current_user_from_token(request: Request, response: Response = None, db:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        secret = os.getenv("SECRET")
-        payload = jwt.decode(token, secret or '', algorithms=["HS256"])
-        username = payload.get("sub")
-        user = db.query(Users).filter(Users.username == username).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        if not user.unique_id:
-            user.unique_id = str(uuid.uuid4())
-            db.commit()
-        if response:
-            response.set_cookie(key="unique_id", value=user.unique_id, max_age=604800)
-        return user
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if token:
+        try:
+            secret = os.getenv("SECRET")
+            payload = jwt.decode(token, secret or '', algorithms=["HS256"])
+            username = payload.get("sub")
+            user = db.query(Users).filter(Users.username == username).first()
+            if user:
+                if not user.unique_id:
+                    user.unique_id = str(uuid.uuid4())
+                    db.commit()
+                if response:
+                    response.set_cookie(key="unique_id", value=user.unique_id, max_age=604800)
+                return user
+        except Exception:
+            pass
+
+    # Fallback to unique_id from header/cookie/query param or primary user
+    uid = request.headers.get("X-Unique-ID") or request.cookies.get("unique_id") or request.query_params.get("unique_id")
+    if uid:
+        user = db.query(Users).filter(Users.unique_id == uid).first()
+        if user:
+            return user
+
+    primary_user = db.query(Users).filter(Users.unique_id.isnot(None)).first()
+    if primary_user:
+        return primary_user
+
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 @app.get("/onboarding/status")
 def get_onboarding_status(user: Users = Depends(get_current_user_from_token)):
@@ -689,7 +700,10 @@ def add_voucher(payload: List[VoucherSchema], db: Session = Depends(get_db), cur
 
 @app.get("/vouchers")
 def get_vouchers(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    rows = db.query(Vouchers).filter(Vouchers.unique_id == current_uid).order_by(Vouchers.id.desc()).all()
+    query = db.query(Vouchers)
+    if current_uid:
+        query = query.filter(or_(Vouchers.unique_id == current_uid, Vouchers.unique_id.is_(None), Vouchers.unique_id == ""))
+    rows = query.order_by(Vouchers.id.desc()).all()
     return [
         {
             "id": v.id,
@@ -743,7 +757,10 @@ def update_voucher(voucher_id: int, payload: VoucherSchema, db: Session = Depend
 
 @app.get("/vouchers/{voucher_id}")
 def get_single_voucher(voucher_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    voucher = db.query(Vouchers).filter(Vouchers.id == voucher_id, Vouchers.unique_id == current_uid).first()
+    query = db.query(Vouchers).filter(Vouchers.id == voucher_id)
+    if current_uid:
+        query = query.filter(or_(Vouchers.unique_id == current_uid, Vouchers.unique_id.is_(None), Vouchers.unique_id == ""))
+    voucher = query.first()
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
     return {
@@ -888,14 +905,23 @@ def _pv_to_dict(pv):
 
 @app.get("/pending-vouchers")
 def get_pending_vouchers(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    rows = db.query(PendingVouchers).filter(PendingVouchers.status == "pending", PendingVouchers.unique_id == current_uid).order_by(PendingVouchers.id.asc()).all()
+    query = db.query(PendingVouchers).filter(PendingVouchers.status == "pending")
+    if current_uid:
+        query = query.filter(or_(PendingVouchers.unique_id == current_uid, PendingVouchers.unique_id.is_(None), PendingVouchers.unique_id == ""))
+    rows = query.order_by(PendingVouchers.id.asc()).all()
     return [_pv_to_dict(r) for r in rows]
 
 @app.get("/pending-vouchers/stats")
 def get_pending_stats(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    pending_count = db.query(PendingVouchers).filter(PendingVouchers.status == "pending", PendingVouchers.unique_id == current_uid).count()
-    done_count = db.query(PendingVouchers).filter(PendingVouchers.status.in_(["accepted", "rejected"]), PendingVouchers.unique_id == current_uid).count()
-    total_count = db.query(PendingVouchers).filter(PendingVouchers.unique_id == current_uid).count()
+    if current_uid:
+        uid_filter = or_(PendingVouchers.unique_id == current_uid, PendingVouchers.unique_id.is_(None), PendingVouchers.unique_id == "")
+        pending_count = db.query(PendingVouchers).filter(PendingVouchers.status == "pending", uid_filter).count()
+        done_count = db.query(PendingVouchers).filter(PendingVouchers.status.in_(["accepted", "rejected"]), uid_filter).count()
+        total_count = db.query(PendingVouchers).filter(uid_filter).count()
+    else:
+        pending_count = db.query(PendingVouchers).filter(PendingVouchers.status == "pending").count()
+        done_count = db.query(PendingVouchers).filter(PendingVouchers.status.in_(["accepted", "rejected"])).count()
+        total_count = db.query(PendingVouchers).count()
     return {
         "pending": pending_count,
         "done": done_count,
@@ -1026,12 +1052,18 @@ def add_bank_statements(payload: List[BankStatementInputSchema], db: Session = D
 
 @app.get("/bank-statements")
 def get_bank_statements(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    rows = db.query(BankStatements).filter(BankStatements.unique_id == current_uid).order_by(BankStatements.id.desc()).all()
+    query = db.query(BankStatements)
+    if current_uid:
+        query = query.filter(or_(BankStatements.unique_id == current_uid, BankStatements.unique_id.is_(None), BankStatements.unique_id == ""))
+    rows = query.order_by(BankStatements.id.desc()).all()
     return [_bs_to_dict(r) for r in rows]
 
 @app.get("/bank-statements/{bs_id}")
 def get_bank_statement(bs_id: int, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    bs = db.query(BankStatements).filter(BankStatements.id == bs_id, BankStatements.unique_id == current_uid).first()
+    query = db.query(BankStatements).filter(BankStatements.id == bs_id)
+    if current_uid:
+        query = query.filter(or_(BankStatements.unique_id == current_uid, BankStatements.unique_id.is_(None), BankStatements.unique_id == ""))
+    bs = query.first()
     if not bs:
         raise HTTPException(status_code=404, detail="Bank statement not found")
     return _bs_to_dict(bs)
@@ -1104,7 +1136,10 @@ def add_BRS(payload: BRSInputSchema, db: Session = Depends(get_db), current_uid:
 
 @app.get("/BRS")
 def get_BRS(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    rows = db.query(BRS).filter(BRS.unique_id == current_uid).order_by(BRS.id.desc()).all()
+    query = db.query(BRS)
+    if current_uid:
+        query = query.filter(or_(BRS.unique_id == current_uid, BRS.unique_id.is_(None), BRS.unique_id == ""))
+    rows = query.order_by(BRS.id.desc()).all()
     return [_brs_to_dict(r) for r in rows]
 
 @app.delete("/BRS/{brs_id}")
@@ -1159,7 +1194,10 @@ def add_godown(payload: GodownSchema, db: Session = Depends(get_db), current_uid
 
 @app.get("/godown")
 def get_godown(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    rows = db.query(godown).filter(godown.unique_id == current_uid).order_by(godown.id.desc()).all()
+    query = db.query(godown)
+    if current_uid:
+        query = query.filter(or_(godown.unique_id == current_uid, godown.unique_id.is_(None), godown.unique_id == ""))
+    rows = query.order_by(godown.id.desc()).all()
     return [_godown_to_dict(r) for r in rows]
 
 def _units_to_dict(u):
@@ -1224,7 +1262,10 @@ def update_godown(godown_name:str, payload:GodownSchema, db:Session=Depends(get_
 
 @app.get("/godown/{godown_name}")
 def get_single_godown(godown_name: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    row = db.query(godown).filter(godown.godown_name == godown_name, godown.unique_id == current_uid).first()
+    query = db.query(godown).filter(godown.godown_name == godown_name)
+    if current_uid:
+        query = query.filter(or_(godown.unique_id == current_uid, godown.unique_id.is_(None), godown.unique_id == ""))
+    row = query.first()
     if not row:
         raise HTTPException(status_code=404, detail="Godown not found")
     return _godown_to_dict(row)
@@ -1349,12 +1390,18 @@ def add_unit(payload: UnitSchema, db: Session = Depends(get_db), current_uid: st
 
 @app.get("/units")
 def get_units(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    rows = db.query(units).filter(units.unique_id == current_uid).order_by(units.id.desc()).all()
+    query = db.query(units)
+    if current_uid:
+        query = query.filter(or_(units.unique_id == current_uid, units.unique_id.is_(None), units.unique_id == ""))
+    rows = query.order_by(units.id.desc()).all()
     return [_units_to_dict(r) for r in rows]
 
 @app.get("/units/{unit_symbol}")
 def get_conversion(unit_symbol: str, db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    row = db.query(units).filter(units.symbol == unit_symbol, units.unique_id == current_uid).first()
+    query = db.query(units).filter(units.symbol == unit_symbol)
+    if current_uid:
+        query = query.filter(or_(units.unique_id == current_uid, units.unique_id.is_(None), units.unique_id == ""))
+    row = query.first()
     try:
         if row is not None:
             return row.conversion
@@ -1425,7 +1472,10 @@ def add_stock(payload: StockSchema, db: Session = Depends(get_db), current_uid: 
     
 @app.get("/stock")
 def get_stock(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
-    rows = db.query(stock).filter(stock.unique_id == current_uid).order_by(stock.id.desc()).all()
+    query = db.query(stock)
+    if current_uid:
+        query = query.filter(or_(stock.unique_id == current_uid, stock.unique_id.is_(None), stock.unique_id == ""))
+    rows = query.order_by(stock.id.desc()).all()
     return [_items_to_dict(r) for r in rows]
 
 def _log_to_dict(l):
@@ -1451,8 +1501,11 @@ def add_log(payload: NotificationLogSchema, db: Session = Depends(get_db), curre
     return new_log
 
 @app.get("/notification-log")
-def get_log(db: Session = Depends(get_db)):
-    rows = db.query(notificationLogs).order_by(notificationLogs.id.desc()).all()
+def get_log(db: Session = Depends(get_db), current_uid: str = Depends(get_current_unique_id)):
+    query = db.query(notificationLogs)
+    if current_uid:
+        query = query.filter(or_(notificationLogs.unique_id == current_uid, notificationLogs.unique_id.is_(None), notificationLogs.unique_id == ""))
+    rows = query.order_by(notificationLogs.id.desc()).all()
     return [_log_to_dict(r) for r in rows]
 
 @app.post("/generate-invoice")

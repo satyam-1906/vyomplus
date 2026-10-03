@@ -387,7 +387,8 @@ godownReset.addEventListener('click', () => {
 
 async function fetchUnits() {
     try {
-        const response = await fetch(API_BASE + '/units');
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(API_BASE + '/units', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -407,7 +408,8 @@ async function fetchUnits() {
 
 async function fetchGodownsList() {
     try {
-        const response = await fetch(API_BASE + '/godown');
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(API_BASE + '/godown', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -514,7 +516,8 @@ async function renderStockItems(records) {
 
 async function fetchStockItems() {
     try {
-        const response = await fetch(API_BASE + '/stock');
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(API_BASE + '/stock', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -642,7 +645,8 @@ async function fetchGodowns() {
     // show spinner row while we prepare the entire list
     godownsTbody.innerHTML = '<tr class="loading-row"><td colspan="4" style="padding:24px;text-align:center;color:var(--color-text-muted);"><div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><div class="spinner" aria-hidden="true"></div><div>Loading godowns...</div></div></td></tr>';
     try {
-        const response = await fetch(API_BASE + '/godown');
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(API_BASE + '/godown', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }

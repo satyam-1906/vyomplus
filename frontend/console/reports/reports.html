@@ -128,6 +128,7 @@
 <script>
     async function loadITCCardStats() {
         const statsEl = document.getElementById('itc-card-stats');
+        try {
         if (!statsEl) return;
             const apiBase = window.API_BASE || 'https://vyomplus.onrender.com';
             const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};

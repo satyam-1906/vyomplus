@@ -161,7 +161,7 @@
 <script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script>
-const API_BASE = 'https://vyomplus.onrender.com';
+const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
 function getCookieToken() { var m = document.cookie.match(/session_token=([^;]+)/); return m ? m[1] : ''; }
 
 // Populate security info from cache

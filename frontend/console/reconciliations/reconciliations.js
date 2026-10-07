@@ -1,4 +1,4 @@
-const API_BASE = 'https://vyomplus.onrender.com';
+const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
 
 // BRS live data from database
 let brsRecords = [];

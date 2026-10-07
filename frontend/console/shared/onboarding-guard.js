@@ -23,8 +23,8 @@
             return;
         }
 
-        try {
-            const response = await fetch("https://vyomplus.onrender.com/onboarding/status", {
+            const apiBase = window.API_BASE || 'https://vyomplus.onrender.com';
+            const response = await fetch(`${apiBase}/onboarding/status`, {
                 credentials: "include",
                 headers: {
                     "Authorization": `Bearer ${token}`

@@ -6,7 +6,7 @@
    ================================================ */
 
 (function () {
-    const API_BASE = 'https://vyomplus.onrender.com';
+    const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
 
     /* ---------- Toast Container ---------- */
     let toastContainer = null;

@@ -16,7 +16,21 @@
  *   VyomUser.populateSidebar()- fills .sidebar-avatar, .sidebar-user-name, .sidebar-user-role
  */
 
-const API_BASE = 'https://vyomplus.onrender.com';
+window.API_BASE = (function () {
+    if (window.VYOM_API_BASE) return window.VYOM_API_BASE;
+    var host = window.location.hostname;
+    var port = window.location.port;
+    if (host === 'localhost' || host === '127.0.0.1') {
+        if (port === '8000') return '';
+        return 'http://127.0.0.1:8000';
+    }
+    if (window.location.protocol === 'file:') {
+        return 'http://127.0.0.1:8000';
+    }
+    return 'https://vyomplus.onrender.com';
+})();
+
+const API_BASE = window.API_BASE;
 const CACHE_KEY = 'vyom_user_profile';
 
 window.VyomUser = (function () {

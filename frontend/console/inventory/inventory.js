@@ -1,4 +1,4 @@
-const API_BASE = 'https://vyomplus.onrender.com';
+const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
 const tabs = document.querySelectorAll('.module-tab');
 const panels = document.querySelectorAll('.console-content');
 const titleEl = document.getElementById('page-title');

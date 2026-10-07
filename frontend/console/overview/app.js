@@ -68,14 +68,80 @@ let alerts = [
     { type: "success", title: "Invoice Matches Books", desc: "All uploaded invoices match GSTR-2B perfectly.", time: "Yesterday" }
 ];
 
+async function loadLiveData() {
+    const apiBase = window.API_BASE || 'https://vyomplus.onrender.com';
+    const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+    
+    try {
+        const stockRes = await fetch(`${apiBase}/stock`, { credentials: 'include', headers: headers });
+        if (stockRes.ok) {
+            const stockData = await stockRes.json();
+            if (Array.isArray(stockData) && stockData.length > 0) {
+                inventoryItems = stockData.map(s => ({
+                    name: s.item,
+                    sku: `HSN-${s.hsn_code || 'N/A'}`,
+                    qty: s.quantity || 0,
+                    price: s.rate || 0,
+                    gstRate: s.gst_rate || 18
+                }));
+            }
+        }
+    } catch (e) {
+        console.warn('Overview: failed loading stock', e);
+    }
+
+    try {
+        const vRes = await fetch(`${apiBase}/vouchers`, { credentials: 'include', headers: headers });
+        if (vRes.ok) {
+            const vData = await vRes.json();
+            if (Array.isArray(vData) && vData.length > 0) {
+                recentTransactions = vData.slice(0, 10).map(v => ({
+                    id: `VCH-${v.id}`,
+                    invoiceNum: v.voucher_no || `VCH-${v.id}`,
+                    seller: v.voucher_type === 'Purchase' ? v.party : (window.VyomUser && window.VyomUser.getRole() || 'My Business'),
+                    customer: v.voucher_type === 'Sales' ? v.party : (window.VyomUser && window.VyomUser.getRole() || 'My Business'),
+                    finalPrice: v.amount || 0,
+                    netGst: v.gst_amount || 0,
+                    status: (v.status || 'pending').toLowerCase(),
+                    items: v.items || []
+                }));
+                
+                let salesAmt = 0, purchAmt = 0;
+                vData.forEach(v => {
+                    const amt = parseFloat(v.amount) || 0;
+                    if ((v.voucher_type || '').toLowerCase() === 'sales') salesAmt += amt;
+                    if ((v.voucher_type || '').toLowerCase() === 'purchase') purchAmt += amt;
+                });
+                const netPlEl = document.querySelector('.net-pl-value');
+                const salesValEl = document.querySelector('.pl-breakdown .breakdown-item:nth-child(1) .value');
+                const purchValEl = document.querySelector('.pl-breakdown .breakdown-item:nth-child(2) .value');
+                if (salesValEl) salesValEl.textContent = '₹' + salesAmt.toLocaleString('en-IN');
+                if (purchValEl) purchValEl.textContent = '₹' + purchAmt.toLocaleString('en-IN');
+                if (netPlEl) {
+                    const net = salesAmt - purchAmt;
+                    netPlEl.textContent = (net >= 0 ? '₹' : '-₹') + Math.abs(net).toLocaleString('en-IN');
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Overview: failed loading vouchers', e);
+    }
+}
+
 // Initialize application
-document.addEventListener("DOMContentLoaded", () => {
-    // Render all panels
+async function initOverview() {
+    await loadLiveData();
     renderInventory();
     renderTransactions();
     renderAlerts();
     initDOMEvents();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", initOverview);
+} else {
+    initOverview();
+}
 
 // Render Inventory Table
 function renderInventory(filterQuery = "") {

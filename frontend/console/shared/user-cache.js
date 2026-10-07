@@ -53,6 +53,7 @@ window.VyomUser = (function () {
     function clear() {
         localStorage.removeItem(CACHE_KEY);
         localStorage.removeItem('unique_id');
+        localStorage.removeItem('session_token');
         localStorage.removeItem('email');
         localStorage.removeItem('onboarding_complete');
         localStorage.removeItem('sidebar_collapsed');
@@ -131,11 +132,24 @@ window.VyomUser = (function () {
         return match ? match[1] : '';
     }
 
+    function getToken() {
+        var p = get();
+        if (p && p.session_token) return p.session_token;
+        var loc = localStorage.getItem('session_token');
+        if (loc) return loc;
+        var match = document.cookie.match(/session_token=([^;]+)/);
+        return match ? match[1] : '';
+    }
+
+    function getCookieToken() {
+        return getToken();
+    }
+
     function getAuthHeaders() {
         var headers = {};
         var uid = getUniqueId();
         if (uid) headers['X-Unique-ID'] = uid;
-        var token = getCookieToken();
+        var token = getToken();
         if (token) headers['Authorization'] = 'Bearer ' + token;
         return headers;
     }
@@ -158,5 +172,5 @@ window.VyomUser = (function () {
         }
     }
 
-    return { get, set, clear, logout, getInitials, getDisplayName, getRole, populateSidebar, refreshFromAPI, getUniqueId, getAuthHeaders };
+    return { get, set, clear, logout, getInitials, getDisplayName, getRole, populateSidebar, refreshFromAPI, getUniqueId, getToken, getCookieToken, getAuthHeaders };
 })();

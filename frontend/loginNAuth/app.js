@@ -255,7 +255,10 @@ async function login() {
             alertBanner.style.display = 'block';
             
             // Set cookie manually in JS in case backend cookies are blocked (cross-origin)
-            document.cookie = `session_token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+            if (data.token) {
+                document.cookie = `session_token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+                localStorage.setItem('session_token', data.token);
+            }
             if (data.unique_id) {
                 document.cookie = `unique_id=${data.unique_id}; path=/; max-age=604800; SameSite=Lax`;
                 localStorage.setItem('unique_id', data.unique_id);
@@ -265,10 +268,11 @@ async function login() {
             localStorage.setItem('onboarding_complete', data.onboarding_complete);
 
             // Cache full profile for sidebar/profile pages
-            // IMPORTANT: unique_id MUST be in the profile so VyomUser.getUniqueId()
-            // can always resolve it from the canonical cache.
+            // IMPORTANT: unique_id and session_token MUST be in the profile so VyomUser.getUniqueId()
+            // and VyomUser.getToken() can always resolve them from the canonical cache.
             const profile = {
                 unique_id: data.unique_id,
+                session_token: data.token,
                 email: data.email,
                 username: data.username,
                 full_name: data.full_name,

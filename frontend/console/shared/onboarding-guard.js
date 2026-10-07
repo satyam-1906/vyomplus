@@ -12,9 +12,10 @@
             return;
         }
 
-        const token = getCookie("session_token");
+        const token = getCookie("session_token") || localStorage.getItem("session_token") || (window.VyomUser ? window.VyomUser.getToken() : "");
         if (!token) {
-            window.location.href = "/frontend/loginNAuth/login.html";
+            const loginRelPath = currentPath.includes("/console/") ? "../../loginNAuth/login.html" : "../loginNAuth/login.html";
+            window.location.href = loginRelPath;
             return;
         }
 

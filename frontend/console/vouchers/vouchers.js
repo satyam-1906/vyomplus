@@ -230,6 +230,7 @@ async function loadVouchers() {
     } catch (err) {
         console.error('[Vouchers] Load failed:', err);
         tbody.innerHTML = '<tr><td colspan="8" style="padding:24px;text-align:center;color:#f87171;">Failed to load vouchers. Is the backend running?</td></tr>';
+        updateMetrics();
         return;
     }
     renderVouchers();

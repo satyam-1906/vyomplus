@@ -161,7 +161,7 @@
 <script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script>
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 function getCookieToken() { var m = document.cookie.match(/session_token=([^;]+)/); return m ? m[1] : ''; }
 
 // Populate security info from cache
@@ -215,7 +215,7 @@ document.getElementById('change-pw-form').addEventListener('submit', async funct
     btn.disabled = true;
     btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Updating...';
     try {
-        var res = await fetch(API_BASE + '/profile/change-password', {
+        var res = await fetch(window.API_BASE + '/profile/change-password', {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCookieToken() },
             body: JSON.stringify({ current_password: cur, new_password: nw })

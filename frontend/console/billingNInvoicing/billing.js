@@ -1,6 +1,6 @@
 'use strict';
 
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 let inventoryItems = [];
 let allGodowns = [];
 let salesInvoices = []; // We will store all fetched vouchers here and filter/render
@@ -52,7 +52,7 @@ function resetDates() {
 async function fetchInventory() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const res = await fetch(`${API_BASE}/stock`, { credentials: 'include', headers: headers });
+        const res = await fetch(`${window.API_BASE}/stock`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error();
         inventoryItems = await res.json();
     } catch {
@@ -64,7 +64,7 @@ async function fetchInventory() {
 async function fetchGodowns() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const res = await fetch(`${API_BASE}/godown`, { credentials: 'include', headers: headers });
+        const res = await fetch(`${window.API_BASE}/godown`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error();
         allGodowns = await res.json();
     } catch {
@@ -1283,9 +1283,11 @@ generateBtn.addEventListener('click', async function (e) {
             meta: meta
         };
 
-        const res = await fetch(`${API_BASE}/generate-invoice`, {
+        const pdfAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${window.API_BASE}/generate-invoice`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, pdfAuthHeaders),
             body: JSON.stringify(pdfPayload),
         });
         if (!res.ok) throw new Error('PDF Generation Failed.');
@@ -1334,9 +1336,11 @@ generateBtn.addEventListener('click', async function (e) {
             meta: meta
         }];
 
-        const vRes = await fetch(`${API_BASE}/add-voucher`, {
+        const vchAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const vRes = await fetch(`${window.API_BASE}/add-voucher`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, vchAuthHeaders),
             body: JSON.stringify(voucherPayload)
         });
 
@@ -1360,9 +1364,11 @@ generateBtn.addEventListener('click', async function (e) {
             })).filter(i => i.item_name);
 
             if (syncItems.length > 0) {
-                const sRes = await fetch(`${API_BASE}/sync-invoice-stock`, {
+                const syncAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+                const sRes = await fetch(`${window.API_BASE}/sync-invoice-stock`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, syncAuthHeaders),
                     body: JSON.stringify({ items: syncItems, revert: false })
                 });
                 if (sRes.ok) {
@@ -1388,7 +1394,7 @@ generateBtn.addEventListener('click', async function (e) {
 async function fetchAllVouchers() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const res = await fetch(`${API_BASE}/vouchers`, { credentials: 'include', headers: headers });
+        const res = await fetch(`${window.API_BASE}/vouchers`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error();
         salesInvoices = await res.json();
         renderInvoiceList();
@@ -1509,8 +1515,9 @@ document.getElementById('confirm-yes-btn').addEventListener('click', async funct
     document.getElementById('confirm-modal').classList.remove('show');
 
     try {
+        const revertAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
         // 1. Fetch details for inventory restore if sales
-        const voucherRes = await fetch(`${API_BASE}/vouchers/${voucherId}`);
+        const voucherRes = await fetch(`${window.API_BASE}/vouchers/${voucherId}`, { credentials: 'include', headers: revertAuthHeaders });
         if (voucherRes.ok) {
             const voucherData = await voucherRes.json();
             if (voucherData.voucher_type === 'Sales' && Array.isArray(voucherData.items) && voucherData.items.length > 0) {
@@ -1519,16 +1526,17 @@ document.getElementById('confirm-yes-btn').addEventListener('click', async funct
                     qty: i.qty || i.quantity || 0,
                     godown: i.godown || null
                 }));
-                await fetch(`${API_BASE}/sync-invoice-stock`, {
+                await fetch(`${window.API_BASE}/sync-invoice-stock`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, revertAuthHeaders),
                     body: JSON.stringify({ items: syncItems, revert: true })
                 });
             }
         }
 
         // 2. Delete Voucher
-        const delRes = await fetch(`${API_BASE}/vouchers/${voucherId}`, { method: 'DELETE' });
+        const delRes = await fetch(`${window.API_BASE}/vouchers/${voucherId}`, { method: 'DELETE', credentials: 'include', headers: revertAuthHeaders });
         if (delRes.ok) {
             if (typeof showToast === 'function') showToast('Voucher deleted and reversed!', 'success');
             await fetchAllVouchers();

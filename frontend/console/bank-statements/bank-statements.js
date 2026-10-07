@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 
 // Local cache of bank statement entries
 let statements = [];
@@ -62,7 +62,7 @@ function getMockVouchers() {
 async function fetchVouchers() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const res = await fetch(API_BASE + '/vouchers', { credentials: 'include', headers: headers });
+        const res = await fetch(window.API_BASE + '/vouchers', { credentials: 'include', headers: headers });
         if (res.ok) {
             allVouchers = await res.json();
             pendingVouchers = allVouchers.filter(v => (v.status || '').toLowerCase() === 'pending');
@@ -220,7 +220,7 @@ async function loadStatements() {
     tbody.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--color-text-muted);">Loading statements&hellip;</td></tr>';
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const res = await fetch(API_BASE + '/bank-statements', { credentials: 'include', headers: headers });
+        const res = await fetch(window.API_BASE + '/bank-statements', { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Server returned ' + res.status);
         const data = await res.json();
         statements = Array.isArray(data) ? data : [];
@@ -444,9 +444,11 @@ async function handleOCRFile(file) {
     showOCRLoader();
     try {
         const arrayBuffer = await file.arrayBuffer();
-        const response = await fetch(API_BASE + '/extract-OCR', {
+        const authHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(window.API_BASE + '/extract-OCR', {
             method: 'POST',
-            headers: { 'Content-Type': file.type, 'Schema': 'bankStatement' },
+            credentials: 'include',
+            headers: Object.assign({ 'Content-Type': file.type, 'Schema': 'bankStatement' }, authHeaders),
             body: arrayBuffer,
         });
         if (!response.ok) {
@@ -551,9 +553,11 @@ newStatementForm.addEventListener('submit', async function(e) {
         };
 
         try {
-            const res = await fetch(API_BASE + '/bank-statements/' + editingRecordId, {
+            const editAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(window.API_BASE + '/bank-statements/' + editingRecordId, {
                 method:  'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, editAuthHeaders),
                 body:    JSON.stringify(payload),
             });
 
@@ -582,9 +586,11 @@ newStatementForm.addEventListener('submit', async function(e) {
             const vch = allVouchers.find(v => v.voucher_no === voucherRef);
             if (vch) {
                 try {
-                    await fetch(API_BASE + '/vouchers/' + vch.id, {
+                    const vchAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+                    await fetch(window.API_BASE + '/vouchers/' + vch.id, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        headers: Object.assign({ 'Content-Type': 'application/json' }, vchAuthHeaders),
                         body: JSON.stringify({
                             voucher_type: vch.voucher_type,
                             date: vch.date,
@@ -612,9 +618,11 @@ newStatementForm.addEventListener('submit', async function(e) {
                     gst_amount: vch.gst_amount || 0,
                 };
                 try {
-                    const brsRes = await fetch(API_BASE + '/BRS', {
+                    const brsAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+                    const brsRes = await fetch(window.API_BASE + '/BRS', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        headers: Object.assign({ 'Content-Type': 'application/json' }, brsAuthHeaders),
                         body: JSON.stringify(brsPayload),
                     });
                     if (brsRes.ok) {
@@ -659,9 +667,11 @@ newStatementForm.addEventListener('submit', async function(e) {
     }
 
     try {
-        const uploadRes = await fetch(API_BASE + '/upload-to-AWS', {
+        const uploadAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const uploadRes = await fetch(window.API_BASE + '/upload-to-AWS', {
             method: 'POST',
-            headers: { 'Schema': 'bankStatement' }
+            credentials: 'include',
+            headers: Object.assign({ 'Schema': 'bankStatement' }, uploadAuthHeaders)
         });
         
         if (!uploadRes.ok) {
@@ -671,9 +681,11 @@ newStatementForm.addEventListener('submit', async function(e) {
 
         for (const rec of extractedRecords) {
             const payload = buildPayload(rec);
-            const res = await fetch(API_BASE + '/bank-statements', {
+            const createAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(window.API_BASE + '/bank-statements', {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, createAuthHeaders),
                 body:    JSON.stringify([payload]),
             });
             if (!res.ok) {
@@ -799,7 +811,8 @@ function showReconciliationConfirm(message, onConfirm) {
 
 window.triggerRemoveStatement = async function(id) {
     try {
-        const brsRes = await fetch(API_BASE + '/BRS');
+        const brsGetAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const brsRes = await fetch(window.API_BASE + '/BRS', { credentials: 'include', headers: brsGetAuthHeaders });
         let matchedBrs = null;
         if (brsRes.ok) {
             const brsRecords = await brsRes.json();
@@ -809,13 +822,15 @@ window.triggerRemoveStatement = async function(id) {
         const deleteAction = async () => {
             if (matchedBrs) {
                 try {
-                    await fetch(API_BASE + '/BRS/' + matchedBrs.id, { method: 'DELETE' });
+                    await fetch(window.API_BASE + '/BRS/' + matchedBrs.id, { method: 'DELETE', credentials: 'include', headers: brsGetAuthHeaders });
                 } catch (e) {
                     console.error('Failed to delete BRS record:', e);
                 }
             }
-            fetch(API_BASE + '/bank-statements/' + id, {
-                method: 'DELETE'
+            fetch(window.API_BASE + '/bank-statements/' + id, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: brsGetAuthHeaders
             }).then(res => {
                 if (res.ok) {
                     statements = statements.filter(s => s.id != id);
@@ -848,7 +863,8 @@ window.triggerRemoveStatement = async function(id) {
     } catch (err) {
         console.error('Check BRS failed:', err);
         if (confirm('Are you sure you want to remove this statement record?')) {
-            fetch(API_BASE + '/bank-statements/' + id, { method: 'DELETE' }).then(res => {
+            const fallbackAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            fetch(window.API_BASE + '/bank-statements/' + id, { method: 'DELETE', credentials: 'include', headers: fallbackAuthHeaders }).then(res => {
                 if (res.ok) {
                     statements = statements.filter(s => s.id != id);
                     renderStatements();

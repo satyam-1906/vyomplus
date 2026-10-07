@@ -6,7 +6,7 @@
    ================================================ */
 
 (function () {
-    const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+    // window.API_BASE resolved via window.API_BASE
 
     /* ---------- Toast Container ---------- */
     let toastContainer = null;
@@ -49,9 +49,11 @@
     /* ---------- logNotification ---------- */
     window.logNotification = async function (detail) {
         try {
-            await fetch(`${API_BASE}/notification-log`, {
+            const notifHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            await fetch(`${window.API_BASE}/notification-log`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, notifHeaders),
                 body: JSON.stringify({ detail })
             });
             // Refresh badge if bell is present
@@ -122,7 +124,7 @@
 
         try {
             const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-            const res = await fetch(`${API_BASE}/notification-log`, { credentials: 'include', headers: headers });
+            const res = await fetch(`${window.API_BASE}/notification-log`, { credentials: 'include', headers: headers });
             if (!res.ok) return;
             const logs = await res.json();
 

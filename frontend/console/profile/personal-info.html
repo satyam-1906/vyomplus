@@ -135,7 +135,7 @@
 <script src="../shared/sidebar.js"></script>
 <script src="../shared/notifications.js"></script>
 <script>
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 function getCookieToken() {
     var m = document.cookie.match(/session_token=([^;]+)/);
     return m ? m[1] : '';
@@ -164,7 +164,7 @@ document.getElementById('personal-info-form').addEventListener('submit', async f
         if (v && v.trim()) payload[f] = v.trim();
     });
     try {
-        var res = await fetch(API_BASE + '/profile/personal', {
+        var res = await fetch(window.API_BASE + '/profile/personal', {
             method: 'PUT', credentials: 'include',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCookieToken() },
             body: JSON.stringify(payload)

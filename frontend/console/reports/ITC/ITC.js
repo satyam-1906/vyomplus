@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 
 let allVouchers = [];
 let purchaseVouchers = [];
@@ -34,7 +34,7 @@ async function loadITCData() {
     const tbody = document.getElementById('voucher-tbody');
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const res = await fetch(`${API_BASE}/vouchers`, { credentials: 'include', headers: headers });
+        const res = await fetch(`${window.API_BASE}/vouchers`, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Network response was not ok');
         allVouchers = await res.json();
         

@@ -156,7 +156,7 @@
     if (smsToggle)   smsToggle.checked   = !!prefs.sms;
     if (waToggle)    waToggle.checked    = !!prefs.whatsapp;
 
-    var API = 'https://vyomplus.onrender.com';
+    var API = window.API_BASE || 'https://vyomplus.onrender.com';
     function getToken() { var m = document.cookie.match(/session_token=([^;]+)/); return m ? m[1] : ''; }
     function savePref(key, val) {
         var payload = {}; payload[key] = val;

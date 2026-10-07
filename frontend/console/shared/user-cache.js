@@ -30,7 +30,7 @@ window.API_BASE = (function () {
     return 'https://vyomplus.onrender.com';
 })();
 
-const API_BASE = window.API_BASE;
+
 const CACHE_KEY = 'vyom_user_profile';
 
 window.VyomUser = (function () {
@@ -65,7 +65,7 @@ window.VyomUser = (function () {
         try {
             var token = getCookieToken();
             if (token) {
-                fetch(API_BASE + '/logout', {
+                fetch(window.API_BASE + '/logout', {
                     method: 'POST', credentials: 'include',
                     headers: { 'Authorization': 'Bearer ' + token }
                 }).catch(function() {});
@@ -143,7 +143,7 @@ window.VyomUser = (function () {
     async function refreshFromAPI() {
         try {
             var headers = getAuthHeaders();
-            var res = await fetch(API_BASE + '/profile/details', {
+            var res = await fetch(window.API_BASE + '/profile/details', {
                 method: 'GET',
                 credentials: 'include',
                 headers: headers

@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let currentStep = 1;
     const totalSteps = 7;
     const stepsData = {};
-    const API_BASE = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1") ? "" : "https://vyomplus.onrender.com";
+    const window.API_BASE = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1") ? "" : "https://vyomplus.onrender.com";
 
     // Elements
     const panes = document.querySelectorAll(".onboarding-step-pane");
@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Fetch initial user status & pre-populate Step 1
     try {
-        const response = await fetch(`${API_BASE}/onboarding/status`, {
+        const response = await fetch(`${window.API_BASE}/onboarding/status`, {
             credentials: "include",
             headers: {
                 "Authorization": `Bearer ${getCookie("session_token") || ""}`
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         submitBtn.innerHTML = `Completing... <i class="ti ti-loader rotate"></i>`;
 
         try {
-            const resp = await fetch(`${API_BASE}/onboarding/complete`, {
+            const resp = await fetch(`${window.API_BASE}/onboarding/complete`, {
                 method: "POST",
                 credentials: "include",
                 headers: {

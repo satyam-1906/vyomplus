@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 
 // Live vouchers cache – populated from the API
 let vouchers = [];
@@ -51,7 +51,7 @@ function toInputDate(raw) {
 
 /** Pretty-print a stored date string for display in the table */
 function displayDate(raw) {
-    if (!raw) return 'â€”';
+    if (!raw) return '\u2014';
     const d = new Date(raw);
     if (!isNaN(d.getTime())) return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     return raw; // already formatted
@@ -219,10 +219,8 @@ function renderVouchers() {
 async function loadVouchers() {
     tbody.innerHTML = '<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--color-text-muted);">Loading vouchers…</td></tr>';
     try {
-        const uid = getUniqueId();
-        const url = uid ? `${API_BASE}/vouchers?unique_id=${encodeURIComponent(uid)}` : `${API_BASE}/vouchers`;
-        const headers = uid ? { 'X-Unique-ID': uid } : {};
-        const res = await fetch(url, {
+        const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(window.API_BASE + '/vouchers', {
             credentials: 'include',
             headers: headers
         });
@@ -535,9 +533,11 @@ async function handleOCRFile(file) {
     try {
         const arrayBuffer = await file.arrayBuffer();
         
-        const response = await fetch(API_BASE + '/extract-OCR', {
+        const authHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(window.API_BASE + '/extract-OCR', {
             method: 'POST',
-            headers: { 'Content-Type': file.type, 'Schema': 'voucher' },
+            credentials: 'include',
+            headers: Object.assign({ 'Content-Type': file.type, 'Schema': 'voucher' }, authHeaders),
             body: arrayBuffer,
         });
 
@@ -691,9 +691,11 @@ newVoucherForm.addEventListener('submit', async function(e) {
         const payload = buildPayloadFromForm();
 
         try {
-            const res = await fetch(API_BASE + '/vouchers/' + editingVoucherId, {
+            const authHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(window.API_BASE + '/vouchers/' + editingVoucherId, {
                 method:  'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
                 body:    JSON.stringify(payload),
             });
 
@@ -732,9 +734,11 @@ newVoucherForm.addEventListener('submit', async function(e) {
         }
 
         try {
-            const response = await fetch(API_BASE + '/upload-to-AWS', {
+            const uploadAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const response = await fetch(window.API_BASE + '/upload-to-AWS', {
                 method: 'POST',
-                headers: { 'Schema': 'voucher' }
+                credentials: 'include',
+                headers: Object.assign({ 'Schema': 'voucher' }, uploadAuthHeaders)
             });
             
             if (!response.ok) {
@@ -743,9 +747,11 @@ newVoucherForm.addEventListener('submit', async function(e) {
             }
 
             const payloads = extractedRecords.map(buildPayload);
-            const res = await fetch(API_BASE + '/add-voucher', {
+            const addAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(window.API_BASE + '/add-voucher', {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, addAuthHeaders),
                 body:    JSON.stringify(payloads),
             });
 
@@ -783,9 +789,11 @@ newVoucherForm.addEventListener('submit', async function(e) {
 
     if (ocrTriggered) {
         try {
-            const response = await fetch(API_BASE + '/upload-to-AWS', {
+            const uploadAuthHeaders2 = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const response = await fetch(window.API_BASE + '/upload-to-AWS', {
                 method: 'POST',
-                headers: { 'Schema': 'voucher' }
+                credentials: 'include',
+                headers: Object.assign({ 'Schema': 'voucher' }, uploadAuthHeaders2)
             });
             
             if (!response.ok) {
@@ -793,9 +801,11 @@ newVoucherForm.addEventListener('submit', async function(e) {
                 throw new Error('Server error ' + response.status + ': ' + errText);
             }
 
-            const res = await fetch(API_BASE + '/add-voucher', {
+            const addAuthHeaders2 = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(window.API_BASE + '/add-voucher', {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, addAuthHeaders2),
                 body:    JSON.stringify([payload]),
             });
 
@@ -823,9 +833,11 @@ newVoucherForm.addEventListener('submit', async function(e) {
         }
     } else {
         try {
-            const res = await fetch(API_BASE + '/add-voucher', {
+            const addAuthHeaders3 = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(window.API_BASE + '/add-voucher', {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, addAuthHeaders3),
                 body:    JSON.stringify([payload]),
             });
 
@@ -951,7 +963,8 @@ window.triggerRemoveVoucher = async function(id) {
     if (!record) return;
 
     try {
-        const brsRes = await fetch(API_BASE + '/BRS');
+        const brsAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const brsRes = await fetch(window.API_BASE + '/BRS', { credentials: 'include', headers: brsAuthHeaders });
         let matchedBrs = null;
         if (brsRes.ok) {
             const brsRecords = await brsRes.json();
@@ -961,13 +974,15 @@ window.triggerRemoveVoucher = async function(id) {
         const deleteAction = async () => {
             if (matchedBrs) {
                 try {
-                    await fetch(API_BASE + '/BRS/' + matchedBrs.id, { method: 'DELETE' });
+                    await fetch(window.API_BASE + '/BRS/' + matchedBrs.id, { method: 'DELETE', credentials: 'include', headers: brsAuthHeaders });
                 } catch (e) {
                     console.error('Failed to delete BRS record:', e);
                 }
             }
-            fetch(API_BASE + '/vouchers/' + id, {
-                method: 'DELETE'
+            fetch(window.API_BASE + '/vouchers/' + id, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: brsAuthHeaders
             }).then(res => {
                 if (res.ok) {
                     vouchers = vouchers.filter(v => (v.id || v.voucher_no) != id);
@@ -1000,7 +1015,8 @@ window.triggerRemoveVoucher = async function(id) {
     } catch (err) {
         console.error('Check BRS failed:', err);
         if (confirm('Are you sure you want to remove this voucher record?')) {
-            fetch(API_BASE + '/vouchers/' + id, { method: 'DELETE' }).then(res => {
+            const fallbackAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            fetch(window.API_BASE + '/vouchers/' + id, { method: 'DELETE', credentials: 'include', headers: fallbackAuthHeaders }).then(res => {
                 if (res.ok) {
                     vouchers = vouchers.filter(v => (v.id || v.voucher_no) != id);
                     renderVouchers();

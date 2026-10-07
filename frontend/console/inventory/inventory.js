@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 const tabs = document.querySelectorAll('.module-tab');
 const panels = document.querySelectorAll('.console-content');
 const titleEl = document.getElementById('page-title');
@@ -78,7 +78,8 @@ document.addEventListener('click', () => {
 async function deleteGodown(name) {
     if (!confirm(`Delete godown "${name}"? This will deduct its quantities from all stock items.`)) return;
     try {
-        const res = await fetch(`${API_BASE}/godown/${encodeURIComponent(name)}`, { method: 'DELETE' });
+        const authHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${window.API_BASE}/godown/${encodeURIComponent(name)}`, { method: 'DELETE', credentials: 'include', headers: authHeaders });
         if (!res.ok) {
             const err = await res.json().catch(() => null);
             throw new Error(err?.detail || `Server returned ${res.status}`);
@@ -93,7 +94,8 @@ async function deleteGodown(name) {
 
 async function openGodownEditModal(name) {
     try {
-        const res = await fetch(`${API_BASE}/godown/${encodeURIComponent(name)}`);
+        const gdAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${window.API_BASE}/godown/${encodeURIComponent(name)}`, { credentials: 'include', headers: gdAuthHeaders });
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const data = await res.json();
 
@@ -130,7 +132,8 @@ async function openGodownEditModal(name) {
 async function deleteStockItem(itemName) {
     if (!confirm(`Delete stock item "${itemName}"? This will remove it from all godowns.`)) return;
     try {
-        const res = await fetch(`${API_BASE}/stock/${encodeURIComponent(itemName)}`, { method: 'DELETE' });
+        const stAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${window.API_BASE}/stock/${encodeURIComponent(itemName)}`, { method: 'DELETE', credentials: 'include', headers: stAuthHeaders });
         if (!res.ok) {
             const err = await res.json().catch(() => null);
             throw new Error(err?.detail || `Server returned ${res.status}`);
@@ -388,7 +391,7 @@ godownReset.addEventListener('click', () => {
 async function fetchUnits() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const response = await fetch(API_BASE + '/units', { credentials: 'include', headers: headers });
+        const response = await fetch(window.API_BASE + '/units', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -409,7 +412,7 @@ async function fetchUnits() {
 async function fetchGodownsList() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const response = await fetch(API_BASE + '/godown', { credentials: 'include', headers: headers });
+        const response = await fetch(window.API_BASE + '/godown', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -517,7 +520,7 @@ async function renderStockItems(records) {
 async function fetchStockItems() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const response = await fetch(API_BASE + '/stock', { credentials: 'include', headers: headers });
+        const response = await fetch(window.API_BASE + '/stock', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -537,7 +540,8 @@ async function getUnitConversion(unitSymbol) {
     if (!unitDef || unitDef.type !== 'compound') return null;
 
     try {
-        const response = await fetch(`${API_BASE}/units/${encodeURIComponent(unitSymbol)}`);
+        const unitAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(`${window.API_BASE}/units/${encodeURIComponent(unitSymbol)}`, { credentials: 'include', headers: unitAuthHeaders });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -646,7 +650,7 @@ async function fetchGodowns() {
     godownsTbody.innerHTML = '<tr class="loading-row"><td colspan="4" style="padding:24px;text-align:center;color:var(--color-text-muted);"><div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><div class="spinner" aria-hidden="true"></div><div>Loading godowns...</div></div></td></tr>';
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const response = await fetch(API_BASE + '/godown', { credentials: 'include', headers: headers });
+        const response = await fetch(window.API_BASE + '/godown', { credentials: 'include', headers: headers });
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
@@ -691,13 +695,15 @@ godownForm.addEventListener('submit', async (event) => {
     try {
         const isEditing = !!godownForm._editingName;
         const url = isEditing
-            ? `${API_BASE}/godown/${encodeURIComponent(godownForm._editingName)}`
-            : `${API_BASE}/godown`;
+            ? `${window.API_BASE}/godown/${encodeURIComponent(godownForm._editingName)}`
+            : `${window.API_BASE}/godown`;
         const method = isEditing ? 'PUT' : 'POST';
 
+        const gdSaveHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
         const response = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, gdSaveHeaders),
             body: JSON.stringify({ godown_name: name, location, items: payloadItems })
         });
 
@@ -770,13 +776,15 @@ stockForm.addEventListener('submit', async (event) => {
     try {
         const isEditing = !!stockForm._editingName;
         const url = isEditing
-            ? `${API_BASE}/stock/${encodeURIComponent(stockForm._editingName)}`
-            : `${API_BASE}/stock`;
+            ? `${window.API_BASE}/stock/${encodeURIComponent(stockForm._editingName)}`
+            : `${window.API_BASE}/stock`;
         const method = isEditing ? 'PUT' : 'POST';
 
+        const stSaveHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
         const response = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, stSaveHeaders),
             body: JSON.stringify({ item: itemName, quantity, unit, rate, godowns, gst_rate: gstRate, hsn_code: hsnCode })
         });
 
@@ -827,9 +835,11 @@ unitForm.addEventListener('submit', async (event) => {
     }
 
     try {
-        const response = await fetch(API_BASE + '/units', {
+        const unitSaveHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const response = await fetch(window.API_BASE + '/units', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, unitSaveHeaders),
             body: JSON.stringify(payload)
         });
 

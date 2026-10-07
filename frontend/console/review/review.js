@@ -13,7 +13,7 @@
  *     upload a new file straight from this page (calls /upload-to-AWS → /extract-OCR → /pending-vouchers).
  */
 
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 
 let pendingQueue  = [];   // items with status "pending"
 let currentIndex  = 0;    // index within pendingQueue currently being shown
@@ -48,7 +48,7 @@ async function loadStats() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
         const uid = window.VyomUser ? window.VyomUser.getUniqueId() : (localStorage.getItem('unique_id') || '');
-        const url = uid ? `${API_BASE}/pending-vouchers/stats?unique_id=${encodeURIComponent(uid)}` : `${API_BASE}/pending-vouchers/stats`;
+        const url = uid ? `${window.API_BASE}/pending-vouchers/stats?unique_id=${encodeURIComponent(uid)}` : `${window.API_BASE}/pending-vouchers/stats`;
         const res  = await fetch(url, { credentials: 'include', headers: headers });
         if (!res.ok) return;
         const data = await res.json();
@@ -65,7 +65,7 @@ async function loadQueue() {
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
         const uid = window.VyomUser ? window.VyomUser.getUniqueId() : (localStorage.getItem('unique_id') || '');
-        const url = uid ? `${API_BASE}/pending-vouchers?unique_id=${encodeURIComponent(uid)}` : `${API_BASE}/pending-vouchers`;
+        const url = uid ? `${window.API_BASE}/pending-vouchers?unique_id=${encodeURIComponent(uid)}` : `${window.API_BASE}/pending-vouchers`;
         const res = await fetch(url, { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Server ' + res.status);
         pendingQueue  = await res.json();
@@ -125,8 +125,9 @@ async function renderCurrentVoucher() {
         const ext = item.file_key.split('.').pop().toLowerCase();
 
         try {
+            const fileAuthHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
             /* Fetch file bytes through the backend proxy — avoids S3 CORS issues */
-            const proxyRes = await fetch(`${API_BASE}/get-file?file_key=${encodeURIComponent(item.file_key)}`);
+            const proxyRes = await fetch(`${window.API_BASE}/get-file?file_key=${encodeURIComponent(item.file_key)}`, { credentials: 'include', headers: fileAuthHeaders });
             if (!proxyRes.ok) {
                 const errText = await proxyRes.text();
                 throw new Error(`Failed to load file (${proxyRes.status}): ${errText}`);
@@ -148,7 +149,7 @@ async function renderCurrentVoucher() {
 
             } else {
                 // Unknown type — offer a download link via presigned URL
-                const r = await fetch(`${API_BASE}/get-presigned-url?file_key=${encodeURIComponent(item.file_key)}`);
+                const r = await fetch(`${window.API_BASE}/get-presigned-url?file_key=${encodeURIComponent(item.file_key)}`, { credentials: 'include', headers: fileAuthHeaders });
                 const { url } = r.ok ? await r.json() : { url: '#' };
                 previewBody.innerHTML = `
                     <div class="empty-state">
@@ -287,7 +288,8 @@ btnReject.addEventListener('click', async () => {
 
     const item = pendingQueue[currentIndex];
     try {
-        const res = await fetch(`${API_BASE}/pending-vouchers/${item.id}/reject`, { method: 'POST' });
+        const rejectHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${window.API_BASE}/pending-vouchers/${item.id}/reject`, { method: 'POST', credentials: 'include', headers: rejectHeaders });
         if (!res.ok) throw new Error((await res.json()).detail || 'Server error');
         notify('Voucher rejected.', 'warning');
         pendingQueue.splice(currentIndex, 1);
@@ -310,9 +312,11 @@ btnSaveNext.addEventListener('click', async () => {
 
     btnSaveNext.disabled = true;
     try {
-        const res = await fetch(`${API_BASE}/pending-vouchers/${item.id}/accept`, {
+        const acceptHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const res = await fetch(`${window.API_BASE}/pending-vouchers/${item.id}/accept`, {
             method  : 'POST',
-            headers : { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers : Object.assign({ 'Content-Type': 'application/json' }, acceptHeaders),
             body    : JSON.stringify(payload),
         });
         if (!res.ok) throw new Error((await res.json()).detail || 'Server error');
@@ -352,9 +356,11 @@ async function handleUpload(file) {
         const bytes = await file.arrayBuffer();
 
         /* 1. OCR extraction */
-        const ocrRes = await fetch(`${API_BASE}/extract-OCR`, {
+        const ocrHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const ocrRes = await fetch(`${window.API_BASE}/extract-OCR`, {
             method  : 'POST',
-            headers : { 'Content-Type': file.type, 'Schema': 'voucher' },
+            credentials: 'include',
+            headers : Object.assign({ 'Content-Type': file.type, 'Schema': 'voucher' }, ocrHeaders),
             body    : bytes,
         });
         if (!ocrRes.ok) throw new Error('OCR extraction failed (' + ocrRes.status + ')');
@@ -376,9 +382,11 @@ async function handleUpload(file) {
         if (!report) throw new Error('No data extracted. Try a clearer document.');
 
         /* 2. Upload to AWS S3 (stores file_key in Redis) */
-        const upRes = await fetch(`${API_BASE}/upload-to-AWS`, {
+        const upHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const upRes = await fetch(`${window.API_BASE}/upload-to-AWS`, {
             method  : 'POST',
-            headers : { 'Content-Type': file.type, 'Schema': 'voucher' },
+            credentials: 'include',
+            headers : Object.assign({ 'Content-Type': file.type, 'Schema': 'voucher' }, upHeaders),
             body    : bytes,
         });
         if (!upRes.ok) throw new Error('Upload to S3 failed (' + upRes.status + ')');
@@ -390,9 +398,11 @@ async function handleUpload(file) {
             rate      : Number(i.rate) || 0,
         }));
 
-        const saveRes = await fetch(`${API_BASE}/pending-vouchers`, {
+        const saveHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+        const saveRes = await fetch(`${window.API_BASE}/pending-vouchers`, {
             method  : 'POST',
-            headers : { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers : Object.assign({ 'Content-Type': 'application/json' }, saveHeaders),
             body    : JSON.stringify({
                 voucher_type : report.voucher_type || 'Sales',
                 date         : report.date         || '',

@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || 'https://vyomplus.onrender.com';
+// window.API_BASE resolved via window.API_BASE
 
 // BRS live data from database
 let brsRecords = [];
@@ -80,7 +80,7 @@ async function loadBRS() {
     if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--color-text-muted);">Loading BRS records&hellip;</td></tr>';
     try {
         const headers = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
-        const res = await fetch(API_BASE + '/BRS', { credentials: 'include', headers: headers });
+        const res = await fetch(window.API_BASE + '/BRS', { credentials: 'include', headers: headers });
         if (!res.ok) throw new Error('Server returned ' + res.status);
         brsRecords = await res.json();
     } catch (err) {
@@ -168,7 +168,8 @@ async function triggerRemoveBRS(id) {
     const deleteAction = async () => {
         document.querySelectorAll('.brs-dropdown').forEach(function(d) { d.classList.remove('show'); });
         try {
-            const res = await fetch(API_BASE + '/BRS/' + id, { method: 'DELETE' });
+            const delHeaders = window.VyomUser ? window.VyomUser.getAuthHeaders() : {};
+            const res = await fetch(window.API_BASE + '/BRS/' + id, { method: 'DELETE', credentials: 'include', headers: delHeaders });
             if (res.ok) {
                 brsRecords = brsRecords.filter(function(r) { return r.id !== id; });
                 renderTable();

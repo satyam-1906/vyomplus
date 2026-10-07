@@ -1,4 +1,16 @@
 // Registration Form submission & processing
+// API base resolved dynamically: local dev → http://127.0.0.1:8000, production → Render
+var API_BASE = (function() {
+    if (window.VYOM_API_BASE) return window.VYOM_API_BASE;
+    var host = window.location.hostname;
+    var port = window.location.port;
+    if (host === 'localhost' || host === '127.0.0.1') {
+        return port === '8000' ? '' : 'http://127.0.0.1:8000';
+    }
+    if (window.location.protocol === 'file:') return 'http://127.0.0.1:8000';
+    return 'https://vyomplus.onrender.com';
+})();
+
 const registrationForm = document.getElementById('registrationForm');
 if (registrationForm) {
     // Password strength logic
@@ -57,7 +69,7 @@ async function register() {
     };
 
     try {
-        const response = await fetch('https://vyomplus.onrender.com/create', {
+        const response = await fetch(API_BASE + '/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -162,7 +174,7 @@ async function verify() {
     };
 
     try {
-        const response = await fetch('https://vyomplus.onrender.com/verify', {
+        const response = await fetch(API_BASE + '/verify', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -225,7 +237,7 @@ async function login() {
     };
 
     try {
-        const response = await fetch('https://vyomplus.onrender.com/login', {
+        const response = await fetch(API_BASE + '/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -253,7 +265,10 @@ async function login() {
             localStorage.setItem('onboarding_complete', data.onboarding_complete);
 
             // Cache full profile for sidebar/profile pages
+            // IMPORTANT: unique_id MUST be in the profile so VyomUser.getUniqueId()
+            // can always resolve it from the canonical cache.
             const profile = {
+                unique_id: data.unique_id,
                 email: data.email,
                 username: data.username,
                 full_name: data.full_name,

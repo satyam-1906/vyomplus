@@ -369,6 +369,7 @@ def get_profile_details(db: Session = Depends(get_db), user: Users = Depends(get
                 profile_data[k] = v.isoformat()
     return {
         "user": {
+            "unique_id": user.unique_id,
             "email": user.email,
             "username": user.username,
             "full_name": user.full_name,

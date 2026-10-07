@@ -1,4 +1,4 @@
-﻿/* ==============================================
+/* ==============================================
    GST Ledger Hub - Shared Sidebar JS
    Handles: toggle, active state, background anim,
             theme toggle injection
@@ -31,6 +31,10 @@
     // Populate sidebar footer with real user data from cache
     if (window.VyomUser) {
         window.VyomUser.populateSidebar();
+        // Refresh profile in background (keeps unique_id and other fields current)
+        window.VyomUser.refreshFromAPI().then(function(profile) {
+            if (profile) window.VyomUser.populateSidebar();
+        }).catch(function() { /* silent — cached data is still used */ });
     }
 
     if (toggleBtn) {
